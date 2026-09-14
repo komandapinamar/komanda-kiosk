@@ -1,0 +1,330 @@
+package com.komanda.kiosk.ui
+
+import android.util.Log
+import com.komanda.kiosk.core.model.TicketItem
+import com.komanda.kiosk.core.model.TicketPayload
+import com.komanda.kiosk.core.model.TicketSummary
+import com.komanda.kiosk.core.network.BarcodeLookupResponseDto
+import com.komanda.kiosk.core.network.BarcodeSuggestionDto
+import com.komanda.kiosk.core.network.CashShiftDto
+import com.komanda.kiosk.core.network.CatalogCategoryDto
+import com.komanda.kiosk.core.network.CatalogItemDto
+import com.komanda.kiosk.core.network.CloseCashShiftRequest
+import com.komanda.kiosk.core.network.CreateCatalogItemRequest
+import com.komanda.kiosk.core.network.CreateDirectOrderRequest
+import com.komanda.kiosk.core.network.DirectOrderCustomerRequest
+import com.komanda.kiosk.core.network.DirectOrderItemRequest
+import com.komanda.kiosk.core.network.KomandaApi
+import com.komanda.kiosk.core.network.OpenCashShiftRequest
+import com.komanda.kiosk.hardware.printing.PrinterRouter
+import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+class EspressoManager(
+    val tenantId: String,
+    val tenantName: String,
+    private val api: KomandaApi,
+    private val printerRouter: PrinterRouter? = null
+) {
+    private val tag = "EspressoManager"
+
+    private val _categories = MutableStateFlow<List<CatalogCategoryDto>>(emptyList())
+    val categories: StateFlow<List<CatalogCategoryDto>> = _categories.asStateFlow()
+
+    private val _items = MutableStateFlow<List<CatalogItemDto>>(emptyList())
+    val items: StateFlow<List<CatalogItemDto>> = _items.asStateFlow()
+
+    private val _cart = MutableStateFlow<List<EspressoCartLine>>(emptyList())
+    val cart: StateFlow<List<EspressoCartLine>> = _cart.asStateFlow()
+
+    private val _selectedCategoryId = MutableStateFlow<String?>(null)
+    val selectedCategoryId: StateFlow<String?> = _selectedCategoryId.asStateFlow()
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _statusMessage = MutableStateFlow<String?>(null)
+    val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+
+    private val _activeShift = MutableStateFlow<CashShiftDto?>(null)
+    val activeShift: StateFlow<CashShiftDto?> = _activeShift.asStateFlow()
+
+    private val _pendingLookup = MutableStateFlow<Pair<String, BarcodeSuggestionDto?>?>(null)
+    val pendingLookup: StateFlow<Pair<String, BarcodeSuggestionDto?>?> = _pendingLookup.asStateFlow()
+
+    val totalAmount: Double
+        get() = _cart.value.sumOf { it.lineTotal }
+
+    suspend fun loadCashShift() {
+        try {
+            val res = api.getCurrentCashShift(tenantId)
+            if (res.isSuccessful && res.body() != null) {
+                _activeShift.value = res.body()!!.data
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to load current cash shift", e)
+        }
+    }
+
+    suspend fun openCashShift(amount: String, notes: String? = null): Boolean {
+        _isLoading.value = true
+        try {
+            val formatted = if (amount.contains(".")) amount else "$amount.00"
+            val res = api.openCashShift(tenantId, OpenCashShiftRequest(openingBalance = formatted, notes = notes))
+            if (res.isSuccessful && res.body() != null) {
+                _activeShift.value = res.body()!!
+                _statusMessage.value = "Caja abierta con fondo inicial de $$formatted"
+                return true
+            } else {
+                _statusMessage.value = "No se pudo abrir la caja."
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to open cash shift", e)
+            _statusMessage.value = "Error al abrir la caja."
+        } finally {
+            _isLoading.value = false
+        }
+        return false
+    }
+
+    suspend fun closeCashShift(closingBalance: String, notes: String? = null): Boolean {
+        val current = _activeShift.value ?: return false
+        _isLoading.value = true
+        try {
+            val formatted = if (closingBalance.contains(".")) closingBalance else "$closingBalance.00"
+            val res = api.closeCashShift(tenantId, current.id, CloseCashShiftRequest(closingBalance = formatted, notes = notes))
+            if (res.isSuccessful) {
+                _activeShift.value = null
+                _statusMessage.value = "Caja cerrada y arqueo completado."
+                return true
+            } else {
+                _statusMessage.value = "No se pudo cerrar la caja."
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to close cash shift", e)
+            _statusMessage.value = "Error al cerrar la caja."
+        } finally {
+            _isLoading.value = false
+        }
+        return false
+    }
+
+    suspend fun loadCatalog() {
+        _isLoading.value = true
+        try {
+            val catRes = api.listCategories(tenantId)
+            if (catRes.isSuccessful && catRes.body() != null) {
+                _categories.value = catRes.body()!!.data
+            }
+
+            val itemRes = api.listItems(tenantId)
+            if (itemRes.isSuccessful && itemRes.body() != null) {
+                _items.value = itemRes.body()!!.data.filter { it.status == "active" || it.status == "draft" }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to load catalog", e)
+            _statusMessage.value = "Error al cargar el catálogo."
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    fun selectCategory(categoryId: String?) {
+        _selectedCategoryId.value = categoryId
+    }
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun clearStatusMessage() {
+        _statusMessage.value = null
+    }
+
+    fun dismissPendingLookup() {
+        _pendingLookup.value = null
+    }
+
+    fun addToCart(item: CatalogItemDto) {
+        val current = _cart.value.toMutableList()
+        val index = current.indexOfFirst { it.item.id == item.id }
+        if (index >= 0) {
+            val line = current[index]
+            current[index] = line.copy(quantity = line.quantity + 1)
+        } else {
+            current.add(EspressoCartLine(item = item, quantity = 1))
+        }
+        _cart.value = current
+        _statusMessage.value = "Agregado: ${item.name}"
+    }
+
+    fun updateQuantity(itemId: String, delta: Int) {
+        val current = _cart.value.toMutableList()
+        val index = current.indexOfFirst { it.item.id == itemId }
+        if (index >= 0) {
+            val line = current[index]
+            val newQty = line.quantity + delta
+            if (newQty <= 0) {
+                current.removeAt(index)
+            } else {
+                current[index] = line.copy(quantity = newQty)
+            }
+            _cart.value = current
+        }
+    }
+
+    fun clearCart() {
+        _cart.value = emptyList()
+    }
+
+    suspend fun onBarcodeScanned(barcode: String) {
+        val clean = barcode.trim()
+        if (clean.isBlank()) return
+
+        // 1. Fast in-memory lookup (<150ms)
+        val localItem = _items.value.find { it.barcode == clean }
+        if (localItem != null) {
+            addToCart(localItem)
+            return
+        }
+
+        // 2. Fallback to API lookup
+        _isLoading.value = true
+        try {
+            val res = api.lookupBarcode(tenantId, clean)
+            if (res.isSuccessful && res.body() != null) {
+                val body = res.body()!!
+                if (body.item != null) {
+                    addToCart(body.item)
+                } else if (body.suggestion != null) {
+                    _pendingLookup.value = Pair(clean, body.suggestion)
+                } else {
+                    _pendingLookup.value = Pair(clean, null)
+                }
+            } else {
+                _pendingLookup.value = Pair(clean, null)
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Barcode lookup failed", e)
+            _pendingLookup.value = Pair(clean, null)
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    suspend fun quickCreateItem(
+        name: String,
+        price: String,
+        categoryId: String,
+        barcode: String?,
+        isGeneric: Boolean = false,
+        genericIcon: String? = null,
+        trackStock: Boolean = false,
+        stockQuantity: Int = 0
+    ): Boolean {
+        _isLoading.value = true
+        try {
+            val formattedPrice = if (price.contains(".")) price else "$price.00"
+            val request = CreateCatalogItemRequest(
+                categoryId = categoryId,
+                name = name,
+                price = formattedPrice,
+                barcode = barcode,
+                isGeneric = isGeneric,
+                genericIcon = genericIcon,
+                trackStock = trackStock,
+                stockQuantity = stockQuantity,
+                status = "active"
+            )
+
+            val res = api.createCatalogItem(tenantId, request)
+            if (res.isSuccessful && res.body() != null) {
+                val created = res.body()!!
+                _items.value = _items.value + created
+                addToCart(created)
+                _pendingLookup.value = null
+                _statusMessage.value = "Producto creado y agregado al carrito!"
+                return true
+            } else {
+                _statusMessage.value = "No se pudo crear el producto."
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to create catalog item", e)
+            _statusMessage.value = "Error de red al crear el producto."
+        } finally {
+            _isLoading.value = false
+        }
+        return false
+    }
+
+    suspend fun checkout(
+        paymentMethod: String, // "cash", "qr", "card"
+        customerName: String = "Cliente Autoservicio"
+    ): Boolean {
+        if (_cart.value.isEmpty()) return false
+        _isLoading.value = true
+        try {
+            val idempotencyKey = UUID.randomUUID().toString()
+            val request = CreateDirectOrderRequest(
+                items = _cart.value.map { line ->
+                    DirectOrderItemRequest(
+                        catalogItemId = line.item.id,
+                        quantity = line.quantity
+                    )
+                },
+                customer = DirectOrderCustomerRequest(name = customerName),
+                notes = if (paymentMethod == "cash") "Pago en efectivo en mostrador" else null
+            )
+
+            val res = api.createDirectOrder(tenantId, idempotencyKey, request)
+            if (res.isSuccessful && res.body() != null) {
+                val order = res.body()!!
+
+                val purchaseNum = order.purchaseNumber.toString()
+
+                if (paymentMethod == "cash") {
+                    val ticketPayload = TicketPayload(
+                        orderId = order.id,
+                        purchaseNumber = purchaseNum,
+                        tenant = tenantName,
+                        items = _cart.value.map { line ->
+                            TicketItem(
+                                id = line.item.id,
+                                name = line.item.name,
+                                quantity = line.quantity,
+                                unitPrice = line.item.price.toDoubleOrNull() ?: 0.0,
+                                lineTotal = line.lineTotal
+                            )
+                        },
+                        summary = TicketSummary(
+                            subtotal = totalAmount,
+                            total = totalAmount
+                        )
+                    )
+                    printerRouter?.printEspressoCashTicket(ticketPayload)
+                }
+
+                _cart.value = emptyList()
+                _statusMessage.value = if (paymentMethod == "cash") {
+                    "¡Pedido #$purchaseNum creado! Acercate a caja a abonar en efectivo."
+                } else {
+                    "¡Cobro confirmado! Ticket #$purchaseNum"
+                }
+                return true
+            } else {
+                _statusMessage.value = "Error al procesar el pedido."
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Checkout failed", e)
+            _statusMessage.value = "Error de red al procesar el pedido."
+        } finally {
+            _isLoading.value = false
+        }
+        return false
+    }
+}
