@@ -26,7 +26,8 @@ class EspressoManager(
     val tenantId: String,
     val tenantName: String,
     private val api: KomandaApi,
-    private val printerRouter: PrinterRouter? = null
+    private val printerRouter: PrinterRouter? = null,
+    private val attemptStore: CheckoutAttemptStore? = null
 ) {
     private val tag = "EspressoManager"
 
@@ -268,8 +269,12 @@ class EspressoManager(
     ): Boolean {
         if (_cart.value.isEmpty()) return false
         _isLoading.value = true
+        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, paymentMethod, customerName)
+        val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
+        val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
+
         try {
-            val idempotencyKey = UUID.randomUUID().toString()
             val request = CreateDirectOrderRequest(
                 items = _cart.value.map { line ->
                     DirectOrderItemRequest(
@@ -284,6 +289,10 @@ class EspressoManager(
             val res = api.createDirectOrder(tenantId, idempotencyKey, request)
             if (res.isSuccessful && res.body() != null) {
                 val order = res.body()!!
+                attempt?.let {
+                    attemptStore?.markAttemptConfirmed(tenantId, it, order.id)
+                    attemptStore?.clearConfirmedAttempt(tenantId)
+                }
 
                 val purchaseNum = order.purchaseNumber.toString()
 
@@ -317,10 +326,12 @@ class EspressoManager(
                 }
                 return true
             } else {
+                attempt?.let { attemptStore?.markAttemptUnknown(tenantId, it) }
                 _statusMessage.value = "Error al procesar el pedido."
             }
         } catch (e: Exception) {
             Log.e(tag, "Checkout failed", e)
+            attempt?.let { attemptStore?.markAttemptUnknown(tenantId, it) }
             _statusMessage.value = "Error de red al procesar el pedido."
         } finally {
             _isLoading.value = false
