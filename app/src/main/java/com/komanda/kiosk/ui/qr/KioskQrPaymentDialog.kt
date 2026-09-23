@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
+import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.ui.theme.Amber400
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
@@ -43,6 +44,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun KioskQrPaymentDialog(
     session: KioskPaymentSessionResponse,
+    onPollStatus: suspend (attemptId: String) -> KioskPaymentStatusResponse?,
+    onApproved: (KioskPaymentStatusResponse) -> Unit,
     onCancel: (attemptId: String) -> Unit,
     onTimeout: (attemptId: String) -> Unit,
     onDismiss: () -> Unit
@@ -57,6 +60,25 @@ fun KioskQrPaymentDialog(
             secondsRemaining--
         }
         onTimeout(session.paymentAttemptId)
+    }
+
+    LaunchedEffect(session.paymentAttemptId) {
+        while (secondsRemaining > 0) {
+            try {
+                val status = onPollStatus(session.paymentAttemptId)
+                if (status != null && status.status == "approved") {
+                    onApproved(status)
+                    return@LaunchedEffect
+                }
+                if (status != null && (status.status == "failed" || status.status == "expired" || status.status == "cancelled")) {
+                    onTimeout(session.paymentAttemptId)
+                    return@LaunchedEffect
+                }
+            } catch (_: Exception) {
+                // Ignore transient network errors, keep polling while timer remains
+            }
+            delay(1500L)
+        }
     }
 
     val isUrgent = secondsRemaining <= 30

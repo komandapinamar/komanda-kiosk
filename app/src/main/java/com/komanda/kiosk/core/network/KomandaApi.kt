@@ -93,4 +93,10 @@ interface KomandaApi {
         @Path("attemptId") attemptId: String,
         @Header("idempotency-key") idempotencyKey: String
     ): Response<KioskPaymentCancelResponse>
+
+    @GET("/api/v1/tenants/{tenantId}/kiosk/payment-attempts/{attemptId}/status")
+    suspend fun getKioskPaymentStatus(
+        @Path("tenantId") tenantId: String,
+        @Path("attemptId") attemptId: String
+    ): Response<KioskPaymentStatusResponse>
 }

@@ -18,6 +18,7 @@ import com.komanda.kiosk.core.network.KioskPaymentCustomerRequest
 import com.komanda.kiosk.core.network.KioskPaymentItemRequest
 import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
+import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.hardware.printing.PrinterRouter
@@ -64,6 +65,9 @@ class EspressoManager(
 
     private val _activeQrSession = MutableStateFlow<KioskPaymentSessionResponse?>(null)
     val activeQrSession: StateFlow<KioskPaymentSessionResponse?> = _activeQrSession.asStateFlow()
+
+    private val _approvedPayment = MutableStateFlow<KioskPaymentStatusResponse?>(null)
+    val approvedPayment: StateFlow<KioskPaymentStatusResponse?> = _approvedPayment.asStateFlow()
 
     val totalAmount: Double
         get() = _cart.value.sumOf { it.lineTotal }
@@ -395,6 +399,30 @@ class EspressoManager(
         } catch (e: Exception) {
             Log.e(tag, "Cancel QR payment failed", e)
         }
+    }
+
+    suspend fun pollPaymentStatus(attemptId: String): KioskPaymentStatusResponse? {
+        try {
+            val res = api.getKioskPaymentStatus(tenantId, attemptId)
+            if (res.isSuccessful && res.body() != null) {
+                return res.body()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Polling payment status failed", e)
+        }
+        return null
+    }
+
+    fun onPaymentApproved(statusResponse: KioskPaymentStatusResponse) {
+        _activeQrSession.value = null
+        _cart.value = emptyList()
+        _approvedPayment.value = statusResponse
+        val purchaseNum = statusResponse.purchaseNumber ?: ""
+        _statusMessage.value = "¡Cobro confirmado! Ticket #$purchaseNum"
+    }
+
+    fun dismissApprovedPayment() {
+        _approvedPayment.value = null
     }
 
     fun dismissQrPayment() {

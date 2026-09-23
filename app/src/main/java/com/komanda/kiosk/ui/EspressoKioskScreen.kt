@@ -131,6 +131,12 @@ fun EspressoKioskScreen(
     if (activeQrSession != null) {
         KioskQrPaymentDialog(
             session = activeQrSession!!,
+            onPollStatus = { attemptId ->
+                espressoManager.pollPaymentStatus(attemptId)
+            },
+            onApproved = { statusResponse ->
+                espressoManager.onPaymentApproved(statusResponse)
+            },
             onCancel = { attemptId ->
                 coroutineScope.launch {
                     espressoManager.cancelQrPayment(attemptId)

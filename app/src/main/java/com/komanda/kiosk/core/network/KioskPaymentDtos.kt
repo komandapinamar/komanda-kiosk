@@ -36,3 +36,14 @@ data class KioskPaymentCancelResponse(
     val status: String,
     val cancelledAt: String
 )
+
+@JsonClass(generateAdapter = true)
+data class KioskPaymentStatusResponse(
+    val status: String,
+    val secondsRemaining: Int? = null,
+    val orderId: String? = null,
+    val purchaseNumber: String? = null,
+    val total: String? = null,
+    val paymentId: String? = null,
+    val reason: String? = null
+)

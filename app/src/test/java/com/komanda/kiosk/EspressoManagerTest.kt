@@ -13,6 +13,7 @@ import com.komanda.kiosk.core.network.CreateDirectOrderRequest
 import com.komanda.kiosk.core.network.KioskPaymentCancelResponse
 import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
+import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.MobileContextResponse
 import com.komanda.kiosk.core.network.MobileLoginRequest
@@ -195,6 +196,20 @@ class FakeEspressoApi : KomandaApi {
             )
         )
     }
+
+    var mockPaymentStatusResponse: KioskPaymentStatusResponse? = null
+
+    override suspend fun getKioskPaymentStatus(
+        tenantId: String,
+        attemptId: String
+    ): Response<KioskPaymentStatusResponse> {
+        return Response.success(
+            mockPaymentStatusResponse ?: KioskPaymentStatusResponse(
+                status = "pending",
+                secondsRemaining = 90
+            )
+        )
+    }
 }
 
 class EspressoManagerTest {
@@ -354,6 +369,47 @@ class EspressoManagerTest {
         // Cart must be preserved after cancellation
         assertEquals(1, manager.cart.value.size)
         assertTrue(manager.statusMessage.value?.contains("cancelado") == true)
+    }
+
+    @Test
+    fun pollPaymentStatus_returnsCurrentStatus() = runTest {
+        val api = FakeEspressoApi()
+        api.mockPaymentStatusResponse = KioskPaymentStatusResponse(
+            status = "pending",
+            secondsRemaining = 80
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        val status = manager.pollPaymentStatus("att-123")
+
+        assertNotNull(status)
+        assertEquals("pending", status?.status)
+        assertEquals(80, status?.secondsRemaining)
+    }
+
+    @Test
+    fun onPaymentApproved_clearsCartAndQrSessionSetsApprovedPayment() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+        manager.startQrPayment()
+
+        val approvedStatus = KioskPaymentStatusResponse(
+            status = "approved",
+            orderId = "ord-1",
+            purchaseNumber = "1042",
+            total = "1500.00",
+            paymentId = "mp-99"
+        )
+
+        manager.onPaymentApproved(approvedStatus)
+
+        assertEquals(0, manager.cart.value.size)
+        assertNull(manager.activeQrSession.value)
+        assertEquals("approved", manager.approvedPayment.value?.status)
+        assertEquals("1042", manager.approvedPayment.value?.purchaseNumber)
+        assertTrue(manager.statusMessage.value?.contains("Ticket #1042") == true)
     }
 
     @Test
