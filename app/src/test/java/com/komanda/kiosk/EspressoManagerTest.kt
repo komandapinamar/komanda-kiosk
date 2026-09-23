@@ -410,6 +410,9 @@ class EspressoManagerTest {
         assertEquals("approved", manager.approvedPayment.value?.status)
         assertEquals("1042", manager.approvedPayment.value?.purchaseNumber)
         assertTrue(manager.statusMessage.value?.contains("Ticket #1042") == true)
+
+        manager.dismissApprovedPayment()
+        assertNull(manager.approvedPayment.value)
     }
 
     @Test

@@ -97,6 +97,7 @@ fun EspressoKioskScreen(
     val pendingLookup by espressoManager.pendingLookup.collectAsStateWithLifecycle()
     val activeShift by espressoManager.activeShift.collectAsStateWithLifecycle()
     val activeQrSession by espressoManager.activeQrSession.collectAsStateWithLifecycle()
+    val approvedPayment by espressoManager.approvedPayment.collectAsStateWithLifecycle()
 
     var viewMode by remember { mutableStateOf(KioskViewMode.HUB) }
     var showPinDialog by remember { mutableStateOf(false) }
@@ -149,6 +150,19 @@ fun EspressoKioskScreen(
             },
             onDismiss = {
                 espressoManager.dismissQrPayment()
+            }
+        )
+    }
+
+    if (approvedPayment != null) {
+        val payment = approvedPayment!!
+        KioskSuccessScreen(
+            total = payment.total ?: "0.00",
+            purchaseNumber = payment.purchaseNumber,
+            paymentMethod = "Mercado Pago",
+            onDismiss = {
+                espressoManager.dismissApprovedPayment()
+                viewMode = KioskViewMode.HUB
             }
         )
     }
