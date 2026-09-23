@@ -26,6 +26,7 @@ import org.junit.Test
 import retrofit2.Response
 
 class FakeEspressoApi : KomandaApi {
+    var lastDirectOrderRequest: CreateDirectOrderRequest? = null
     val items = mutableListOf(
         CatalogItemDto(
             id = "item-1",
@@ -60,6 +61,7 @@ class FakeEspressoApi : KomandaApi {
         idempotencyKey: String,
         body: CreateDirectOrderRequest
     ): Response<OrderDto> {
+        lastDirectOrderRequest = body
         val order = OrderDto(
             id = "order-101",
             tenantId = tenantId,
@@ -259,6 +261,23 @@ class EspressoManagerTest {
 
         assertTrue(success)
         assertEquals(0, manager.cart.value.size)
+        assertEquals("Pago en efectivo en mostrador", api.lastDirectOrderRequest?.notes)
+        assertTrue(manager.statusMessage.value?.contains("Acercate a caja a abonar en efectivo") == true)
+    }
+
+    @Test
+    fun checkout_qrPaymentMethod_clearsCartAndCallsApi() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+
+        val success = manager.checkout(paymentMethod = "qr")
+
+        assertTrue(success)
+        assertEquals(0, manager.cart.value.size)
+        assertNull(api.lastDirectOrderRequest?.notes)
+        assertTrue(manager.statusMessage.value?.contains("¡Cobro confirmado!") == true)
     }
 
     @Test

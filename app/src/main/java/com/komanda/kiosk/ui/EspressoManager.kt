@@ -264,7 +264,7 @@ class EspressoManager(
     }
 
     suspend fun checkout(
-        paymentMethod: String, // "cash", "qr", "card"
+        paymentMethod: String, // "cash", "qr" (card deferred)
         customerName: String = "Cliente Autoservicio"
     ): Boolean {
         if (_cart.value.isEmpty()) return false
