@@ -14,6 +14,10 @@ import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
 import com.komanda.kiosk.core.network.DirectOrderCustomerRequest
 import com.komanda.kiosk.core.network.DirectOrderItemRequest
+import com.komanda.kiosk.core.network.KioskPaymentCustomerRequest
+import com.komanda.kiosk.core.network.KioskPaymentItemRequest
+import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
+import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.hardware.printing.PrinterRouter
@@ -57,6 +61,9 @@ class EspressoManager(
 
     private val _pendingLookup = MutableStateFlow<Pair<String, BarcodeSuggestionDto?>?>(null)
     val pendingLookup: StateFlow<Pair<String, BarcodeSuggestionDto?>?> = _pendingLookup.asStateFlow()
+
+    private val _activeQrSession = MutableStateFlow<KioskPaymentSessionResponse?>(null)
+    val activeQrSession: StateFlow<KioskPaymentSessionResponse?> = _activeQrSession.asStateFlow()
 
     val totalAmount: Double
         get() = _cart.value.sumOf { it.lineTotal }
@@ -337,5 +344,60 @@ class EspressoManager(
             _isLoading.value = false
         }
         return false
+    }
+
+    suspend fun startQrPayment(customerName: String = "Cliente Autoservicio"): KioskPaymentSessionResponse? {
+        if (_cart.value.isEmpty()) return null
+        _isLoading.value = true
+        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, "qr", customerName)
+        val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
+        val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
+
+        try {
+            val request = KioskPaymentSessionRequest(
+                items = _cart.value.map { line ->
+                    KioskPaymentItemRequest(
+                        catalogItemId = line.item.id,
+                        quantity = line.quantity
+                    )
+                },
+                customer = KioskPaymentCustomerRequest(name = customerName)
+            )
+
+            val res = api.createKioskPaymentSession(tenantId, idempotencyKey, request)
+            if (res.isSuccessful && res.body() != null) {
+                val session = res.body()!!
+                _activeQrSession.value = session
+                return session
+            } else {
+                if (res.code() == 422) {
+                    _statusMessage.value = "Mercado Pago no está configurado en este local."
+                } else {
+                    _statusMessage.value = "Error al iniciar sesión de pago con QR."
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Start QR payment failed", e)
+            _statusMessage.value = "Error de red al conectar con Mercado Pago."
+        } finally {
+            _isLoading.value = false
+        }
+        return null
+    }
+
+    suspend fun cancelQrPayment(attemptId: String) {
+        _activeQrSession.value = null
+        try {
+            val idempotencyKey = UUID.randomUUID().toString()
+            api.cancelKioskPaymentAttempt(tenantId, attemptId, idempotencyKey)
+            _statusMessage.value = "Pago cancelado. Podés continuar con tu compra."
+        } catch (e: Exception) {
+            Log.e(tag, "Cancel QR payment failed", e)
+        }
+    }
+
+    fun dismissQrPayment() {
+        _activeQrSession.value = null
     }
 }
