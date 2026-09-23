@@ -115,6 +115,44 @@ object EscPosTicketRenderer {
         return stream.toByteArray()
     }
 
+    fun renderKioskQrApprovedTicket(payload: TicketPayload, paymentId: String? = null): ByteArray {
+        val stream = ByteArrayOutputStream()
+        renderSharedHeader(stream, payload, subtitle = "COMPROBANTE DE COMPRA")
+
+        writeRule(stream)
+        stream.write(CMD_ALIGN_LEFT)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "PRODUCTOS\n")
+        stream.write(CMD_BOLD_OFF)
+
+        for (item in payload.items) {
+            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            writeText(stream, "    ${formatMoney(item.lineTotal, payload.currency)}\n")
+        }
+
+        writeRule(stream)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "TOTAL PAGADO: ${formatMoney(payload.summary.total, payload.currency)}\n")
+        stream.write(CMD_BOLD_OFF)
+        writeRule(stream)
+
+        stream.write(CMD_ALIGN_CENTER)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "MEDIO DE PAGO: MERCADO PAGO QR\n")
+        writeText(stream, "ESTADO: PAGO APROBADO ONLINE\n")
+        if (!paymentId.isNullOrBlank()) {
+            writeText(stream, "OPERACION MP: $paymentId\n")
+        }
+        stream.write(CMD_BOLD_OFF)
+        writeRule(stream)
+
+        writeText(stream, "¡GRACIAS POR SU COMPRA!\n")
+        writeText(stream, "\n\n\n")
+        stream.write(CMD_FEED_AND_CUT)
+
+        return stream.toByteArray()
+    }
+
     private fun renderSharedHeader(stream: ByteArrayOutputStream, payload: TicketPayload, subtitle: String? = null) {
         stream.write(CMD_INIT)
         stream.write(CMD_ALIGN_CENTER)

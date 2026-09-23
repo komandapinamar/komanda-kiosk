@@ -23,9 +23,12 @@ import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.hardware.printing.PrinterRouter
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class EspressoManager(
     val tenantId: String,
@@ -414,11 +417,43 @@ class EspressoManager(
     }
 
     fun onPaymentApproved(statusResponse: KioskPaymentStatusResponse) {
+        val itemsSnapshot = _cart.value.map { line ->
+            TicketItem(
+                id = line.item.id,
+                name = line.item.name,
+                quantity = line.quantity,
+                unitPrice = line.item.price.toDoubleOrNull() ?: 0.0,
+                lineTotal = line.lineTotal
+            )
+        }
+        val currentTotal = totalAmount
+        val purchaseNum = statusResponse.purchaseNumber ?: ""
+
+        val payload = TicketPayload(
+            orderId = statusResponse.orderId ?: UUID.randomUUID().toString(),
+            purchaseNumber = purchaseNum,
+            tenant = tenantName,
+            items = itemsSnapshot,
+            summary = TicketSummary(
+                subtotal = currentTotal,
+                total = currentTotal
+            )
+        )
+
         _activeQrSession.value = null
         _cart.value = emptyList()
         _approvedPayment.value = statusResponse
-        val purchaseNum = statusResponse.purchaseNumber ?: ""
         _statusMessage.value = "¡Cobro confirmado! Ticket #$purchaseNum"
+
+        printerRouter?.let { router ->
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    router.printKioskQrApprovedTicket(payload, statusResponse.paymentId)
+                } catch (e: Exception) {
+                    Log.e(tag, "Failed to print approved QR ticket", e)
+                }
+            }
+        }
     }
 
     fun dismissApprovedPayment() {

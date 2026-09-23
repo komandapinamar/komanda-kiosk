@@ -109,4 +109,19 @@ class EscPosTicketRendererTest {
         assertTrue("Must include cash instruction line 2", text.contains("A REALIZAR EL PAGO"))
         assertTrue("Must include cash instruction line 3", text.contains("EN EFECTIVO"))
     }
+
+    @Test
+    fun `renderKioskQrApprovedTicket outputs commercial details and payment status`() {
+        val bytes = EscPosTicketRenderer.renderKioskQrApprovedTicket(samplePayload, paymentId = "mp_pay_998877")
+        val text = String(bytes, Charsets.ISO_8859_1)
+
+        assertTrue("Must include KOMANDA header", text.contains("KOMANDA"))
+        assertTrue("Must include COMPROBANTE DE COMPRA subtitle", text.contains("COMPROBANTE DE COMPRA"))
+        assertTrue("Must include items", text.contains("2 x Pizza Especial"))
+        assertTrue("Must include total paid", text.contains("TOTAL PAGADO: $9.500"))
+        assertTrue("Must include payment method", text.contains("MEDIO DE PAGO: MERCADO PAGO QR"))
+        assertTrue("Must include approved status", text.contains("ESTADO: PAGO APROBADO ONLINE"))
+        assertTrue("Must include MP operation id", text.contains("OPERACION MP: mp_pay_998877"))
+        assertTrue("Must include thank you message", text.contains("¡GRACIAS POR SU COMPRA!"))
+    }
 }
