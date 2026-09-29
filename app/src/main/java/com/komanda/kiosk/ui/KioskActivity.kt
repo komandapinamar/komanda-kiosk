@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.komanda.kiosk.core.auth.AuthManager
@@ -137,12 +138,15 @@ class EspressoActivity : ComponentActivity() {
                     }
                     is AuthState.Authenticated -> {
                         val session = state.session
+                        val context = LocalContext.current
+                        val attemptStore = remember(context) { CheckoutAttemptStore(context) }
                         val manager = remember(session.tenantId) {
                             EspressoManager(
                                 tenantId = session.tenantId,
                                 tenantName = session.tenantName,
                                 api = api,
-                                printerRouter = printerRouter
+                                printerRouter = printerRouter,
+                                attemptStore = attemptStore
                             ).also { activeEspressoManager = it }
                         }
 

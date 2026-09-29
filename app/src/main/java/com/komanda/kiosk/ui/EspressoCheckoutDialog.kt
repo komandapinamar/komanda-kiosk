@@ -98,7 +98,7 @@ fun EspressoCheckoutDialog(
                         }
                     }
 
-                    // Option 2: QR Digital
+                    // Option 2: QR Mercado Pago
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = Zinc950,
@@ -121,38 +121,7 @@ fun EspressoCheckoutDialog(
                                     color = Color.White
                                 )
                                 Text(
-                                    text = "Escanear desde cualquier billetera digital",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.6f)
-                                )
-                            }
-                        }
-                    }
-
-                    // Option 3: Tarjeta
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Zinc950,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelectPaymentMethod("card") }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("[Tarjeta]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Amber400)
-                            Spacer(modifier = Modifier.padding(8.dp))
-                            Column {
-                                Text(
-                                    text = "Tarjeta de Débito / Crédito",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Cobro electrónico directo",
+                                    text = "Escanear desde la app de MP o billeteras interoperables (saldo y tarjetas)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.6f)
                                 )
