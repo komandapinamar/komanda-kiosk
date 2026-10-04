@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
 import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
@@ -106,7 +107,7 @@ fun KioskQrPaymentDialog(
                     color = KomandaTokens.AccentTertiary,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+                    letterSpacing = 0.05.em
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))

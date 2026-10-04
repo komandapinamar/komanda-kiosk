@@ -15,8 +15,8 @@ class LargeScreenUiScaleSanityTest {
         val content = screenFile.readText()
 
         assertTrue(
-            "Product price should be styled in 22.sp",
-            content.contains("fontSize = 22.sp")
+            "Product price should be styled in 26.sp",
+            content.contains("fontSize = 26.sp")
         )
 
         assertTrue(
@@ -25,23 +25,23 @@ class LargeScreenUiScaleSanityTest {
         )
 
         assertTrue(
-            "Checkout button height should be 64.dp for totem touch scale",
-            content.contains(".height(64.dp)")
+            "Checkout button height should be 72.dp for totem touch scale",
+            content.contains(".height(72.dp)")
         )
 
         assertTrue(
-            "Checkout button typography should be 24.sp",
-            content.contains("fontSize = 24.sp")
+            "Checkout button typography should be 26.sp",
+            content.contains("fontSize = 26.sp")
         )
 
         assertTrue(
-            "Total amount text should be styled in 32.sp",
-            content.contains("fontSize = 32.sp")
+            "Total amount text should be styled in 38.sp",
+            content.contains("fontSize = 38.sp")
         )
 
         assertTrue(
-            "Filter chips should have at least 48.dp height",
-            content.contains(".height(48.dp)")
+            "Filter chips should have at least 56.dp height",
+            content.contains(".height(56.dp)")
         )
     }
 }

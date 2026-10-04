@@ -136,7 +136,7 @@ fun EspressoCheckoutDialog(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Text("Volver al pedido", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Volver al pedido", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

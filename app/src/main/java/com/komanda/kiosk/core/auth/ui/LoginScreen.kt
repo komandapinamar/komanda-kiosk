@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Red400
@@ -94,16 +95,16 @@ fun LoginScreen(
             ) {
                 Text(
                     text = "Komanda Kiosk",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Thin,
-                        letterSpacing = 1.sp
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = (-0.02).em
                     ),
                     color = Color.White
                 )
 
                 Text(
                     text = "Terminal de Autoservicio",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Zinc400,
                     modifier = Modifier.padding(top = 4.dp, bottom = 28.dp)
                 )
@@ -212,7 +213,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Tarjeta informativa de delimitación de alcances de plataforma
+                // Tarjeta informativa: administración web
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Zinc950),
@@ -235,7 +236,7 @@ fun LoginScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Terminal de Salón",
+                                text = "Página Web de Komanda",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = KomandaTokens.AccentTertiary
@@ -245,10 +246,10 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
-                            text = "Komanda Kiosk es tu terminal de venta y autoservicio para salón. Las analíticas de ventas, el control de stock e inventario y la administración completa del catálogo se gestionan desde el Backoffice Web en app.komanda.com.ar.",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Recordá que contás con la página de Komanda para manejar el stock, productos y administración (app.komanda.com.ar).",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = Zinc400,
-                            lineHeight = 16.sp
+                            lineHeight = 20.sp
                         )
                     }
                 }

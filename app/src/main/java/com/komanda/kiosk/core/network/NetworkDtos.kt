@@ -4,7 +4,8 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class DirectOrderItemRequest(
-    val catalogItemId: String,
+    val kind: String = "item",
+    val resourceId: String,
     val quantity: Int = 1,
     val note: String? = null
 )

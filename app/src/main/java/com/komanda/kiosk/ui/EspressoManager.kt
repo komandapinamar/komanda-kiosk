@@ -337,7 +337,8 @@ class EspressoManager(
             val request = CreateDirectOrderRequest(
                 items = _cart.value.map { line ->
                     DirectOrderItemRequest(
-                        catalogItemId = line.item.id,
+                        kind = "item",
+                        resourceId = line.item.id,
                         quantity = line.quantity
                     )
                 },
