@@ -63,16 +63,17 @@ class AuthManager(
             val activeTenants = response.body()!!.activeTenants
             val currentTenant = activeTenants.find { it.id == session.tenantId }
 
-            if (currentTenant != null) {
+            if (currentTenant != null && isExpressTenant(currentTenant)) {
                 _authState.value = AuthState.Authenticated(session, activeTenants)
             } else {
+                val expressTenants = activeTenants.filter { isExpressTenant(it) }
                 when {
-                    activeTenants.isEmpty() -> {
+                    expressTenants.isEmpty() -> {
                         sessionStorage.clearSession()
                         _authState.value = AuthState.NoActiveTenant(session.token)
                     }
-                    activeTenants.size == 1 -> {
-                        val single = activeTenants.first()
+                    expressTenants.size == 1 && activeTenants.size == 1 -> {
+                        val single = expressTenants.first()
                         val updated = AuthSession(
                             token = session.token,
                             expiresAt = session.expiresAt,
@@ -134,14 +135,15 @@ class AuthManager(
             }
 
             val tenants = contextRes.body()!!.activeTenants
+            val expressTenants = tenants.filter { isExpressTenant(it) }
 
             when {
-                tenants.isEmpty() -> {
+                expressTenants.isEmpty() -> {
                     _authState.value = AuthState.NoActiveTenant(loginData.token)
                 }
-                tenants.size == 1 -> {
-                    // HAPPY_PATH: Automatic single-tenant selection
-                    val single = tenants.first()
+                expressTenants.size == 1 && tenants.size == 1 -> {
+                    // HAPPY_PATH: Automatic single-tenant selection only if the sole business is express
+                    val single = expressTenants.first()
                     val session = AuthSession(
                         token = loginData.token,
                         expiresAt = loginData.expiresAt,
@@ -190,7 +192,13 @@ class AuthManager(
 
         val selected = availableTenants.find { it.id == tenantId }
         if (selected == null) {
-            _authState.value = AuthState.Error("Restaurante no autorizado.")
+            _authState.value = AuthState.Error("Comercio no autorizado.")
+            return false
+        }
+
+        if (!isExpressTenant(selected)) {
+            Log.e(tag, "Attempted to select non-express tenant: ${selected.preset}")
+            _authState.value = AuthState.Error("Este negocio es exclusivo para gastronomía. Utilizá Komanda POS.")
             return false
         }
 
@@ -224,6 +232,10 @@ class AuthManager(
         if (_authState.value is AuthState.Error) {
             _authState.value = AuthState.LoggedOut
         }
+    }
+
+    fun isExpressTenant(tenant: MobileTenantDto): Boolean {
+        return tenant.preset == null || tenant.preset == "express_retail"
     }
 
     private fun isExpired(expiresAt: String): Boolean {

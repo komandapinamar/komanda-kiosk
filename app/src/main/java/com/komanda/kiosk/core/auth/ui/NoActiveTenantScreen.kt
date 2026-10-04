@@ -65,7 +65,7 @@ fun NoActiveTenantScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "No tenés ningún restaurante activo asignado a tu cuenta. Contactá al administrador para obtener acceso.",
+                    text = "No tenés ningún comercio express activo asignado a tu cuenta. Komanda Kiosk es exclusivo para terminales de autoservicio retail. Para comercios gastronómicos, utilizá Komanda POS.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Zinc400,
                     textAlign = TextAlign.Center

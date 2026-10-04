@@ -153,6 +153,45 @@ object EscPosTicketRenderer {
         return stream.toByteArray()
     }
 
+    /**
+     * Komanda Kiosk Diagnostic / Test Ticket Template:
+     * Clean totem / kiosk format for verifying printer connectivity and alignment.
+     */
+    fun renderKioskTestTicket(payload: TicketPayload): ByteArray {
+        val stream = ByteArrayOutputStream()
+        renderSharedHeader(stream, payload, subtitle = "TICKET DE PRUEBA KIOSK")
+
+        writeRule(stream)
+        stream.write(CMD_ALIGN_LEFT)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "PRODUCTOS DE PRUEBA\n")
+        stream.write(CMD_BOLD_OFF)
+
+        for (item in payload.items) {
+            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            writeText(stream, "    ${formatMoney(item.lineTotal, payload.currency)}\n")
+        }
+
+        writeRule(stream)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "TOTAL TEST: ${formatMoney(payload.summary.total, payload.currency)}\n")
+        stream.write(CMD_BOLD_OFF)
+        writeRule(stream)
+
+        stream.write(CMD_ALIGN_CENTER)
+        stream.write(CMD_BOLD_ON)
+        writeText(stream, "ESTADO: IMPRESION DE PRUEBA OK\n")
+        writeText(stream, "AUTOSERVICIO / TOTEM KIOSK\n")
+        stream.write(CMD_BOLD_OFF)
+        writeRule(stream)
+
+        writeText(stream, "¡KOMANDA KIOSK LISTO!\n")
+        writeText(stream, "\n\n\n")
+        stream.write(CMD_FEED_AND_CUT)
+
+        return stream.toByteArray()
+    }
+
     private fun renderSharedHeader(stream: ByteArrayOutputStream, payload: TicketPayload, subtitle: String? = null) {
         stream.write(CMD_INIT)
         stream.write(CMD_ALIGN_CENTER)
@@ -247,19 +286,27 @@ object EscPosTicketRenderer {
         val copyLabel = if (totalCopies > 1) "COPIA ${copyIndex + 1}/$totalCopies" else null
         renderSharedHeader(stream, payload, subtitle = copyLabel)
 
-        // Customer Info
-        stream.write(CMD_ALIGN_LEFT)
-        stream.write(CMD_BOLD_ON)
-        writeText(stream, "CLIENTE\n")
-        stream.write(CMD_BOLD_OFF)
-        writeWrapped(stream, payload.customer.name?.ifBlank { "Sin nombre" } ?: "Sin nombre")
+        // Customer Info (only if provided)
+        val hasCustomerInfo = !payload.customer.name.isNullOrBlank() ||
+                !payload.customer.phone.isNullOrBlank() ||
+                !payload.customer.address.isNullOrBlank()
 
-        payload.customer.phone?.takeIf { it.isNotBlank() }?.let { phone ->
-            writeWrapped(stream, "Telefono: $phone")
-        }
+        if (hasCustomerInfo) {
+            stream.write(CMD_ALIGN_LEFT)
+            stream.write(CMD_BOLD_ON)
+            writeText(stream, "CLIENTE\n")
+            stream.write(CMD_BOLD_OFF)
+            payload.customer.name?.takeIf { it.isNotBlank() }?.let { name ->
+                writeWrapped(stream, name)
+            }
 
-        payload.customer.address?.takeIf { it.isNotBlank() }?.let { address ->
-            writeWrapped(stream, "Direccion: $address")
+            payload.customer.phone?.takeIf { it.isNotBlank() }?.let { phone ->
+                writeWrapped(stream, "Telefono: $phone")
+            }
+
+            payload.customer.address?.takeIf { it.isNotBlank() }?.let { address ->
+                writeWrapped(stream, "Direccion: $address")
+            }
         }
 
         // Notes / Observations
@@ -312,7 +359,7 @@ object EscPosTicketRenderer {
             renderFiscalBlock(stream, fiscal)
         }
 
-        // Footer: ASCII Art & Thank You Branding
+        // Footer
         renderCounterFooter(stream)
 
         // Feed & Cut
@@ -322,13 +369,8 @@ object EscPosTicketRenderer {
 
     private fun renderCounterFooter(stream: ByteArrayOutputStream) {
         stream.write(CMD_ALIGN_CENTER)
-        writeText(stream, "   ( (\n")
-        writeText(stream, "    ) )\n")
-        writeText(stream, " .------.\n")
-        writeText(stream, " | ~~~~ |\n")
-        writeText(stream, "  '----'\n")
         stream.write(CMD_BOLD_ON)
-        writeText(stream, "¡Gracias por tu compra!\n")
+        writeText(stream, "¡Gracias por su compra!\n")
         stream.write(CMD_BOLD_OFF)
     }
 

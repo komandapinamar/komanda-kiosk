@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -61,7 +61,7 @@ fun EspressoCheckoutDialog(
                     text = "Total a pagar: $${String.format(java.util.Locale.US, "%.2f", totalAmount)} ARS",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Amber400
+                    color = KomandaTokens.AccentTertiary
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -71,7 +71,7 @@ fun EspressoCheckoutDialog(
                     Surface(
                         shape = RoundedCornerShape(16.dp),
                         color = Zinc950,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Amber400.copy(alpha = 0.5f)),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.5f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelectPaymentMethod("cash") }
@@ -80,7 +80,7 @@ fun EspressoCheckoutDialog(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("[Efectivo]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Amber400)
+                            Text("[Efectivo]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
                             Spacer(modifier = Modifier.padding(8.dp))
                             Column {
                                 Text(
@@ -92,7 +92,7 @@ fun EspressoCheckoutDialog(
                                 Text(
                                     text = "Se imprimirá un ticket para abonar en mostrador",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Amber400
+                                    color = KomandaTokens.AccentTertiary
                                 )
                             }
                         }
@@ -111,7 +111,7 @@ fun EspressoCheckoutDialog(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("[QR]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Amber400)
+                            Text("[QR]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
                             Spacer(modifier = Modifier.padding(8.dp))
                             Column {
                                 Text(

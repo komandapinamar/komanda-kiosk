@@ -29,7 +29,7 @@ import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.NetworkClient
 import com.komanda.kiosk.ui.settings.PrinterSettingsScreen
 import com.komanda.kiosk.hardware.printing.PrinterRouter
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.KomandaTheme
 import com.komanda.kiosk.ui.theme.Zinc950
 import kotlinx.coroutines.launch
@@ -39,9 +39,9 @@ enum class EspressoScreen {
     PRINTER_SETTINGS
 }
 
-class EspressoActivity : ComponentActivity() {
+class KioskActivity : ComponentActivity() {
 
-    private val tag = "EspressoActivity"
+    private val tag = "KioskActivity"
     private lateinit var authManager: AuthManager
     private lateinit var api: KomandaApi
     private lateinit var printerRouter: PrinterRouter
@@ -91,7 +91,7 @@ class EspressoActivity : ComponentActivity() {
                                 .background(Zinc950),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = Amber400)
+                            CircularProgressIndicator(color = KomandaTokens.AccentTertiary)
                         }
                     }
                     is AuthState.LoggedOut, is AuthState.Loading, is AuthState.Error -> {

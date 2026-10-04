@@ -1,5 +1,6 @@
 package com.komanda.kiosk.core.auth.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,12 +18,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -44,7 +48,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Red400
 import com.komanda.kiosk.ui.theme.Zinc400
 import com.komanda.kiosk.ui.theme.Zinc800
@@ -89,7 +93,7 @@ fun LoginScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Komanda Business",
+                    text = "Komanda Kiosk",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Thin,
                         letterSpacing = 1.sp
@@ -98,7 +102,7 @@ fun LoginScreen(
                 )
 
                 Text(
-                    text = "Terminal Punto de Venta",
+                    text = "Terminal de Autoservicio",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Zinc400,
                     modifier = Modifier.padding(top = 4.dp, bottom = 28.dp)
@@ -133,11 +137,11 @@ fun LoginScreen(
                         imeAction = ImeAction.Next
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Amber400,
+                        focusedBorderColor = KomandaTokens.AccentTertiary,
                         unfocusedBorderColor = Zinc800,
-                        focusedLabelColor = Amber400,
+                        focusedLabelColor = KomandaTokens.AccentTertiary,
                         unfocusedLabelColor = Zinc400,
-                        cursorColor = Amber400
+                        cursorColor = KomandaTokens.AccentTertiary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -163,11 +167,11 @@ fun LoginScreen(
                         }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Amber400,
+                        focusedBorderColor = KomandaTokens.AccentTertiary,
                         unfocusedBorderColor = Zinc800,
-                        focusedLabelColor = Amber400,
+                        focusedLabelColor = KomandaTokens.AccentTertiary,
                         unfocusedLabelColor = Zinc400,
-                        cursorColor = Amber400
+                        cursorColor = KomandaTokens.AccentTertiary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -181,8 +185,8 @@ fun LoginScreen(
                     },
                     enabled = email.isNotBlank() && password.isNotBlank() && !isLoading,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Amber400,
-                        contentColor = Zinc950,
+                        containerColor = KomandaTokens.AccentTertiary,
+                        contentColor = KomandaTokens.AccentPrimary,
                         disabledContainerColor = Zinc800,
                         disabledContentColor = Zinc400
                     ),
@@ -202,6 +206,49 @@ fun LoginScreen(
                             text = "Iniciar Sesión",
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Tarjeta informativa de delimitación de alcances de plataforma
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Zinc950),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Zinc800)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = KomandaTokens.AccentTertiary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Terminal de Salón",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = KomandaTokens.AccentTertiary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Komanda Kiosk es tu terminal de venta y autoservicio para salón. Las analíticas de ventas, el control de stock e inventario y la administración completa del catálogo se gestionan desde el Backoffice Web en app.komanda.com.ar.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Zinc400,
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -229,7 +276,7 @@ fun LoginScreen(
                             title = {
                                 Text(
                                     text = "Servidor backend",
-                                    color = Amber400,
+                                    color = KomandaTokens.AccentTertiary,
                                     fontWeight = FontWeight.Bold
                                 )
                             },
@@ -246,19 +293,19 @@ fun LoginScreen(
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = Amber400,
+                                            focusedBorderColor = KomandaTokens.AccentTertiary,
                                             unfocusedBorderColor = Zinc800,
                                             focusedTextColor = Color.White,
                                             unfocusedTextColor = Color.White,
-                                            cursorColor = Amber400
+                                            cursorColor = KomandaTokens.AccentTertiary
                                         )
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         TextButton(onClick = { tempServerUrl = "https://throwing-dust-public.ngrok-free.dev" }) {
-                                            Text("127.0.0.1 (USB)", fontSize = 11.sp, color = Amber400)
+                                            Text("127.0.0.1 (USB)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
                                         }
                                         TextButton(onClick = { tempServerUrl = "http://10.0.2.2:3000" }) {
-                                            Text("10.0.2.2 (AVD)", fontSize = 11.sp, color = Amber400)
+                                            Text("10.0.2.2 (AVD)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
                                         }
                                     }
                                 }
@@ -273,8 +320,8 @@ fun LoginScreen(
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Amber400,
-                                        contentColor = Zinc950
+                                        containerColor = KomandaTokens.AccentTertiary,
+                                        contentColor = KomandaTokens.AccentPrimary
                                     )
                                 ) {
                                     Text("Guardar")
