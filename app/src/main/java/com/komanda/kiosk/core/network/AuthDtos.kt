@@ -41,3 +41,16 @@ data class MobileContextResponse(
     val activeTenants: List<MobileTenantDto>
         get() = tenants.ifEmpty { data ?: emptyList() }
 }
+
+@JsonClass(generateAdapter = true)
+data class VerifyStaffRequest(
+    val email: String,
+    val password: String
+)
+
+@JsonClass(generateAdapter = true)
+data class VerifyStaffResponse(
+    val authorized: Boolean = true,
+    val userId: String? = null,
+    val role: String? = null
+)

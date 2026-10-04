@@ -20,6 +20,8 @@ import com.komanda.kiosk.core.network.MobileLoginRequest
 import com.komanda.kiosk.core.network.MobileLoginResponse
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.core.network.OrderDto
+import com.komanda.kiosk.core.network.VerifyStaffRequest
+import com.komanda.kiosk.core.network.VerifyStaffResponse
 import com.komanda.kiosk.ui.EspressoManager
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -59,6 +61,19 @@ class FakeEspressoApi : KomandaApi {
 
     override suspend fun getMobileContext(authHeader: String?): Response<MobileContextResponse> =
         Response.success(MobileContextResponse(emptyList()))
+
+    var mockVerifyStaffSuccess: Boolean = true
+
+    override suspend fun verifyStaff(
+        tenantId: String,
+        body: VerifyStaffRequest
+    ): Response<VerifyStaffResponse> {
+        return if (mockVerifyStaffSuccess) {
+            Response.success(VerifyStaffResponse(authorized = true, userId = "usr-1", role = "admin"))
+        } else {
+            Response.error(401, okhttp3.ResponseBody.create(null, "{\"error\": \"INVALID_CREDENTIALS\"}"))
+        }
+    }
 
     override suspend fun createDirectOrder(
         tenantId: String,
