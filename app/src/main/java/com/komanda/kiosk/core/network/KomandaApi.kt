@@ -58,6 +58,13 @@ interface KomandaApi {
         @Body body: CreateCatalogItemRequest
     ): Response<CatalogItemDto>
 
+    @Headers("Content-Type: application/json")
+    @POST("/api/v1/tenants/{tenantId}/auth/verify-staff")
+    suspend fun verifyStaff(
+        @Path("tenantId") tenantId: String,
+        @Body body: VerifyStaffRequest
+    ): Response<VerifyStaffResponse>
+
     @GET("/api/v1/tenants/{tenantId}/cash-shifts/current")
     suspend fun getCurrentCashShift(
         @Path("tenantId") tenantId: String
