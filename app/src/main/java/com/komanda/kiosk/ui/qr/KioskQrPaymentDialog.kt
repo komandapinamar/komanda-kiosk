@@ -90,14 +90,14 @@ fun KioskQrPaymentDialog(
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
             tonalElevation = 8.dp,
-            modifier = Modifier.width(420.dp)
+            modifier = Modifier.width(540.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(28.dp)
+                    .padding(32.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -113,30 +113,30 @@ fun KioskQrPaymentDialog(
 
                 Text(
                     text = "Escaneá para pagar",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     text = "Total: $${session.total} ${session.currency}",
-                    fontSize = 22.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = KomandaTokens.AccentTertiary
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // QR Code Display
                 QrCodeDisplay(
                     content = session.qrData,
-                    sizeDp = 260.dp,
-                    quietZoneDp = 14.dp
+                    sizeDp = 360.dp,
+                    quietZoneDp = 16.dp
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Timer & Progress
                 Column(
@@ -150,47 +150,47 @@ fun KioskQrPaymentDialog(
                     ) {
                         Text(
                             text = if (isUrgent) "¡Tiempo por expirar!" else "Tiempo restante:",
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = if (isUrgent) Color(0xFFEF4444) else Color.White.copy(alpha = 0.6f)
                         )
                         Text(
                             text = formattedTime,
-                            fontSize = 16.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = timerColor
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(6.dp),
+                            .height(8.dp),
                         color = timerColor,
                         trackColor = Zinc950
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = "Apuntá la cámara con Mercado Pago o tu billetera interoperable favorita.",
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
-                    lineHeight = 16.sp
+                    lineHeight = 18.sp
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
                     onClick = { onCancel(session.paymentAttemptId) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(46.dp),
+                        .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Zinc800,
