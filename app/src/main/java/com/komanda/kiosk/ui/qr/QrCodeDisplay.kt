@@ -23,7 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 
 @Composable
 fun QrCodeDisplay(
@@ -65,7 +65,7 @@ fun QrCodeDisplay(
             )
         } else if (isLoading) {
             CircularProgressIndicator(
-                color = Amber400,
+                color = KomandaTokens.AccentTertiary,
                 modifier = Modifier.size(40.dp)
             )
         }

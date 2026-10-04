@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.BarcodeSuggestionDto
 import com.komanda.kiosk.core.network.CatalogCategoryDto
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -94,7 +94,7 @@ fun EspressoQuickAddDialog(
                     Text(
                         text = "Código escaneado: $scannedBarcode",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Amber400
+                        color = KomandaTokens.AccentTertiary
                     )
                 }
 
@@ -117,7 +117,7 @@ fun EspressoQuickAddDialog(
                     Checkbox(
                         checked = isGeneric,
                         onCheckedChange = { isGeneric = it },
-                        colors = CheckboxDefaults.colors(checkedColor = Amber400)
+                        colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
                     )
                     Text("Producto genérico táctil (sin código de barra)")
                 }
@@ -133,14 +133,14 @@ fun EspressoQuickAddDialog(
                             Box(
                                 modifier = Modifier
                                     .background(
-                                        if (genericIcon == tag) Amber400.copy(alpha = 0.2f) else Zinc950,
+                                        if (genericIcon == tag) KomandaTokens.AccentTertiary.copy(alpha = 0.2f) else Zinc950,
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .clickable { genericIcon = tag }
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(tag, fontSize = 12.sp, color = if (genericIcon == tag) Amber400 else Color.White)
+                                Text(tag, fontSize = 12.sp, color = if (genericIcon == tag) KomandaTokens.AccentTertiary else Color.White)
                             }
                         }
                     }
@@ -214,7 +214,7 @@ fun EspressoQuickAddDialog(
                     Checkbox(
                         checked = trackStock,
                         onCheckedChange = { trackStock = it },
-                        colors = CheckboxDefaults.colors(checkedColor = Amber400)
+                        colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
                     )
                     Text("Controlar stock de este producto")
                 }
@@ -247,7 +247,7 @@ fun EspressoQuickAddDialog(
                             onSave(name, price, selectedCategoryId, code, isGeneric, if (isGeneric) genericIcon else null, trackStock, stock)
                         },
                         enabled = name.isNotBlank() && price.isNotBlank() && selectedCategoryId.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Zinc950)
+                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
                     ) {
                         Text("Guardar y agregar", fontWeight = FontWeight.Bold)
                     }
