@@ -108,10 +108,15 @@ fun EspressoKioskScreen(
     var showBackofficeAuthDialog by remember { mutableStateOf(false) }
     var manualBarcodeInput by remember { mutableStateOf("") }
     var showCheckoutDialog by remember { mutableStateOf(false) }
+    var quickAddError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         espressoManager.loadCatalog()
         espressoManager.loadCashShift()
+    }
+
+    LaunchedEffect(pendingLookup) {
+        quickAddError = null
     }
 
     LaunchedEffect(activeStaffSession) {
@@ -211,32 +216,52 @@ fun EspressoKioskScreen(
                 scannedBarcode = barcode,
                 suggestion = suggestion,
                 categories = categories,
+                errorMessage = quickAddError,
+                isLoading = isLoading,
                 onSave = { name, price, categoryId, newCategoryName, code, isGeneric, icon, trackStock, stock ->
                     coroutineScope.launch {
+                        quickAddError = null
                         var finalCatId = categoryId
                         if (!newCategoryName.isNullOrBlank()) {
-                            val createdCat = espressoManager.createCategory(newCategoryName)
-                            if (createdCat != null) {
-                                finalCatId = createdCat.id
+                            val trimmedName = newCategoryName.trim()
+                            val existingCat = espressoManager.categories.value.find { it.name.equals(trimmedName, ignoreCase = true) }
+                            if (existingCat != null) {
+                                finalCatId = existingCat.id
+                            } else {
+                                val createdCat = espressoManager.createCategory(trimmedName)
+                                if (createdCat != null) {
+                                    finalCatId = createdCat.id
+                                } else {
+                                    quickAddError = espressoManager.statusMessage.value ?: "Error al crear la categoría."
+                                    return@launch
+                                }
                             }
                         }
-                        if (!finalCatId.isNullOrBlank()) {
-                            espressoManager.quickCreateItem(
-                                name = name,
-                                price = price,
-                                categoryId = finalCatId,
-                                barcode = code,
-                                isGeneric = isGeneric,
-                                genericIcon = icon,
-                                trackStock = trackStock,
-                                stockQuantity = stock,
-                                addToCart = false
-                            )
+                        if (finalCatId.isNullOrBlank()) {
+                            quickAddError = "Debe seleccionar o ingresar una categoría válida."
+                            return@launch
                         }
-                        espressoManager.dismissPendingLookup()
+                        val success = espressoManager.quickCreateItem(
+                            name = name,
+                            price = price,
+                            categoryId = finalCatId,
+                            barcode = code,
+                            isGeneric = isGeneric,
+                            genericIcon = icon,
+                            trackStock = trackStock,
+                            stockQuantity = stock,
+                            addToCart = false
+                        )
+                        if (success) {
+                            quickAddError = null
+                            espressoManager.dismissPendingLookup()
+                        } else {
+                            quickAddError = espressoManager.statusMessage.value ?: "No se pudo crear el producto."
+                        }
                     }
                 },
                 onDismiss = {
+                    quickAddError = null
                     espressoManager.dismissPendingLookup()
                 }
             )

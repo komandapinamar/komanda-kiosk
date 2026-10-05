@@ -34,6 +34,10 @@ import retrofit2.Response
 
 open class FakeEspressoApi : KomandaApi {
     var lastDirectOrderRequest: CreateDirectOrderRequest? = null
+    var lastCatalogItemRequest: CreateCatalogItemRequest? = null
+    var lastCreateCategoryRequest: CreateCategoryRequest? = null
+    var mockCreateCategorySuccess: Boolean = true
+    var mockCreateCatalogItemSuccess: Boolean = true
     val items = mutableListOf(
         CatalogItemDto(
             id = "item-1",
@@ -109,6 +113,10 @@ open class FakeEspressoApi : KomandaApi {
         tenantId: String,
         body: CreateCategoryRequest
     ): Response<CatalogCategoryDto> {
+        lastCreateCategoryRequest = body
+        if (!mockCreateCategorySuccess) {
+            return Response.error(422, okhttp3.ResponseBody.create(null, "{\"error\": \"CATEGORY_CREATION_FAILED\"}"))
+        }
         val newCat = CatalogCategoryDto(
             id = "cat-${categories.size + 1}",
             name = body.name,
@@ -141,6 +149,10 @@ open class FakeEspressoApi : KomandaApi {
         tenantId: String,
         body: CreateCatalogItemRequest
     ): Response<CatalogItemDto> {
+        lastCatalogItemRequest = body
+        if (!mockCreateCatalogItemSuccess) {
+            return Response.error(422, okhttp3.ResponseBody.create(null, "{\"error\": \"ITEM_CREATION_FAILED\"}"))
+        }
         val newItem = CatalogItemDto(
             id = "item-${items.size + 1}",
             name = body.name,
@@ -520,5 +532,142 @@ class EspressoManagerTest {
         val closed = manager.closeCashShift(closingBalance = "12500.00", notes = "Cierre noche")
         assertTrue(closed)
         assertNull(manager.activeShift.value)
+    }
+
+    @Test
+    fun normalizePriceString_formatsIntegersAndDecimalsWithTwoDecimalPlaces() {
+        assertEquals("2500.00", EspressoManager.normalizePriceString("2500"))
+        assertEquals("2500.50", EspressoManager.normalizePriceString("2500.5"))
+        assertEquals("2500.50", EspressoManager.normalizePriceString("2500,5"))
+        assertEquals("1500.50", EspressoManager.normalizePriceString("1500,50"))
+        assertEquals("2500.50", EspressoManager.normalizePriceString("$ 2500,50"))
+        assertEquals("3500.00", EspressoManager.normalizePriceString(" 3500 "))
+        assertEquals("1250.50", EspressoManager.normalizePriceString("1.250,50"))
+    }
+
+    @Test
+    fun normalizePriceString_rejectsInvalidOrNegativeInputs() {
+        assertNull(EspressoManager.normalizePriceString("0"))
+        assertNull(EspressoManager.normalizePriceString("-10"))
+        assertNull(EspressoManager.normalizePriceString("abc"))
+        assertNull(EspressoManager.normalizePriceString(""))
+        assertNull(EspressoManager.normalizePriceString("   "))
+    }
+
+    @Test
+    fun createCategory_propagatesActiveStatus() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        val newCat = manager.createCategory("Snacks y Golosinas")
+
+        assertNotNull(newCat)
+        assertEquals("active", api.lastCreateCategoryRequest?.status)
+        assertEquals("Snacks y Golosinas", api.lastCreateCategoryRequest?.name)
+    }
+
+    @Test
+    fun quickCreateItem_withCommaPrice_normalizesPriceInRequest() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        val success = manager.quickCreateItem(
+            name = "Alfajor Marplatense",
+            price = "2500,5",
+            categoryId = "cat-1",
+            barcode = "7791234567890",
+            trackStock = true,
+            stockQuantity = 20
+        )
+
+        assertTrue(success)
+        assertEquals("2500.50", api.lastCatalogItemRequest?.price)
+        val createdInCatalog = manager.items.value.find { it.barcode == "7791234567890" }
+        assertNotNull(createdInCatalog)
+        assertEquals("2500.50", createdInCatalog?.price)
+    }
+
+    @Test
+    fun quickCreateItem_withInvalidPrice_failsAndDoesNotCallApi() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        val success = manager.quickCreateItem(
+            name = "Alfajor Inválido",
+            price = "gratis",
+            categoryId = "cat-1",
+            barcode = "7791234567890"
+        )
+
+        org.junit.Assert.assertFalse(success)
+        assertNull(api.lastCatalogItemRequest)
+        assertTrue(manager.statusMessage.value?.contains("Precio inválido") == true)
+    }
+
+    @Test
+    fun onBarcodeScanned_afterQuickCreateItem_recognizesFromLocalMemory() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        // 1. Initial scan: unknown barcode triggers pendingLookup
+        manager.onBarcodeScanned("7798888888888")
+        assertNotNull(manager.pendingLookup.value)
+        assertEquals("7798888888888", manager.pendingLookup.value?.first)
+        assertEquals(0, manager.cart.value.size)
+
+        // 2. Quick create item with this barcode
+        val success = manager.quickCreateItem(
+            name = "Chicle Menta",
+            price = "500",
+            categoryId = "cat-1",
+            barcode = "7798888888888",
+            addToCart = false
+        )
+        assertTrue(success)
+        assertNull(manager.pendingLookup.value)
+
+        // 3. Rescan the same barcode: recognized directly from local memory and added to cart
+        manager.onBarcodeScanned("7798888888888")
+        assertEquals(1, manager.cart.value.size)
+        assertEquals("Chicle Menta", manager.cart.value[0].item.name)
+        assertEquals(500.0, manager.totalAmount, 0.01)
+        assertNull(manager.pendingLookup.value)
+    }
+
+    @Test
+    fun quickCreateItem_whenApiReturnsError_returnsFalseAndPreservesPendingLookup() = runTest {
+        val api = FakeEspressoApi()
+        api.mockCreateCatalogItemSuccess = false
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7791234567890")
+        assertNotNull(manager.pendingLookup.value)
+
+        val success = manager.quickCreateItem(
+            name = "Alfajor Havanna",
+            price = "2500.00",
+            categoryId = "cat-1",
+            barcode = "7791234567890"
+        )
+
+        org.junit.Assert.assertFalse(success)
+        assertNotNull(manager.pendingLookup.value)
+        assertEquals("No se pudo crear el producto.", manager.statusMessage.value)
+    }
+
+    @Test
+    fun createCategory_whenApiReturnsError_returnsNullAndSetsErrorMessage() = runTest {
+        val api = FakeEspressoApi()
+        api.mockCreateCategorySuccess = false
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        val cat = manager.createCategory("Golosinas")
+
+        assertNull(cat)
+        assertEquals("Error al crear la categoría.", manager.statusMessage.value)
     }
 }
