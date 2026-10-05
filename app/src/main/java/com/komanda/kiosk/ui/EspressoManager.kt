@@ -286,7 +286,7 @@ class EspressoManager(
         _isLoading.value = true
         touchStaffActivity()
         try {
-            val res = api.createCategory(tenantId, CreateCategoryRequest(name = cleanName))
+            val res = api.createCategory(tenantId, CreateCategoryRequest(name = cleanName, status = "active"))
             if (res.isSuccessful && res.body() != null) {
                 val created = res.body()!!
                 _categories.value = _categories.value + created
@@ -303,6 +303,30 @@ class EspressoManager(
         return null
     }
 
+    fun normalizePriceString(price: String): String? = Companion.normalizePriceString(price)
+
+    companion object {
+        private val MONEY_REGEX = Regex("""^\d{1,10}\.\d{2}$""")
+
+        fun normalizePriceString(price: String): String? {
+            val trimmed = price.trim().replace("$", "").replace(" ", "")
+            if (trimmed.isBlank()) return null
+
+            // Support numbers with thousand dots and decimal commas (e.g. 1.250,50 or 1.500)
+            val clean = if (trimmed.contains(",") && trimmed.contains(".")) {
+                trimmed.replace(".", "").replace(",", ".")
+            } else {
+                trimmed.replace(",", ".")
+            }
+
+            val doubleVal = clean.toDoubleOrNull() ?: return null
+            if (doubleVal <= 0 || doubleVal.isNaN() || doubleVal.isInfinite()) return null
+            val formatted = String.format(java.util.Locale.US, "%.2f", doubleVal)
+            if (!formatted.matches(MONEY_REGEX)) return null
+            return formatted
+        }
+    }
+
     suspend fun quickCreateItem(
         name: String,
         price: String,
@@ -317,12 +341,26 @@ class EspressoManager(
         _isLoading.value = true
         touchStaffActivity()
         try {
-            val formattedPrice = if (price.contains(".")) price else "$price.00"
+            val formattedPrice = normalizePriceString(price)
+            if (formattedPrice == null) {
+                _statusMessage.value = "Precio inválido. Ingrese un valor numérico válido."
+                return false
+            }
+            val cleanName = name.trim()
+            if (cleanName.isBlank()) {
+                _statusMessage.value = "El nombre del producto es obligatorio."
+                return false
+            }
+            val cleanCategoryId = categoryId.trim()
+            if (cleanCategoryId.isBlank()) {
+                _statusMessage.value = "La categoría es obligatoria."
+                return false
+            }
             val request = CreateCatalogItemRequest(
-                categoryId = categoryId,
-                name = name,
+                categoryId = cleanCategoryId,
+                name = cleanName,
                 price = formattedPrice,
-                barcode = barcode,
+                barcode = barcode?.trim()?.ifBlank { null },
                 isGeneric = isGeneric,
                 genericIcon = genericIcon,
                 trackStock = trackStock,

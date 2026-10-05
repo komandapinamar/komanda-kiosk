@@ -86,7 +86,8 @@ enum class KioskViewMode {
 @Composable
 fun EspressoKioskScreen(
     espressoManager: EspressoManager,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToBackoffice: () -> Unit,
+    onNavigateToSettings: () -> Unit = onNavigateToBackoffice,
     onConfirmCheckout: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -104,16 +105,18 @@ fun EspressoKioskScreen(
     val activeStaffSession by espressoManager.activeStaffSession.collectAsStateWithLifecycle()
 
     var viewMode by remember { mutableStateOf(KioskViewMode.SCANNER) }
-    var showPinDialog by remember { mutableStateOf(false) }
-    var pinAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showBackofficeAuthDialog by remember { mutableStateOf(false) }
     var manualBarcodeInput by remember { mutableStateOf("") }
-    var showOpenShiftDialog by remember { mutableStateOf(false) }
-    var showCloseShiftDialog by remember { mutableStateOf(false) }
     var showCheckoutDialog by remember { mutableStateOf(false) }
+    var quickAddError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         espressoManager.loadCatalog()
         espressoManager.loadCashShift()
+    }
+
+    LaunchedEffect(pendingLookup) {
+        quickAddError = null
     }
 
     LaunchedEffect(activeStaffSession) {
@@ -178,42 +181,29 @@ fun EspressoKioskScreen(
         )
     }
 
-    if (showOpenShiftDialog) {
-        EspressoOpenShiftDialog(
-            onConfirm = { amount ->
-                showOpenShiftDialog = false
+    if (showBackofficeAuthDialog) {
+        var backofficeAuthError by remember { mutableStateOf<String?>(null) }
+        EspressoStaffAuthDialog(
+            title = "Acceso al Backoffice",
+            description = "Ingresá tus credenciales de empleado o administrador para acceder al panel de control.",
+            isLockedOut = espressoManager.isStaffLockedOut,
+            remainingLockoutSeconds = espressoManager.remainingLockoutSeconds,
+            isLoading = isLoading,
+            errorMessage = backofficeAuthError,
+            onConfirm = { email, password ->
                 coroutineScope.launch {
-                    espressoManager.openCashShift(amount)
+                    backofficeAuthError = null
+                    val success = espressoManager.verifyStaffCredentials(email, password)
+                    if (success) {
+                        showBackofficeAuthDialog = false
+                        onNavigateToBackoffice()
+                    } else {
+                        backofficeAuthError = espressoManager.statusMessage.value
+                    }
                 }
-            },
-            onDismiss = { showOpenShiftDialog = false }
-        )
-    }
-
-    if (showCloseShiftDialog && activeShift != null) {
-        EspressoCloseShiftDialog(
-            shift = activeShift!!,
-            onConfirm = { closingBalance, notes ->
-                showCloseShiftDialog = false
-                coroutineScope.launch {
-                    espressoManager.closeCashShift(closingBalance, notes)
-                }
-            },
-            onDismiss = { showCloseShiftDialog = false }
-        )
-    }
-
-    if (showPinDialog) {
-        EspressoPinDialog(
-            correctPin = "1234",
-            onPinSuccess = {
-                showPinDialog = false
-                pinAction?.invoke()
-                pinAction = null
             },
             onDismiss = {
-                showPinDialog = false
-                pinAction = null
+                showBackofficeAuthDialog = false
             }
         )
     }
@@ -226,32 +216,52 @@ fun EspressoKioskScreen(
                 scannedBarcode = barcode,
                 suggestion = suggestion,
                 categories = categories,
+                errorMessage = quickAddError,
+                isLoading = isLoading,
                 onSave = { name, price, categoryId, newCategoryName, code, isGeneric, icon, trackStock, stock ->
                     coroutineScope.launch {
+                        quickAddError = null
                         var finalCatId = categoryId
                         if (!newCategoryName.isNullOrBlank()) {
-                            val createdCat = espressoManager.createCategory(newCategoryName)
-                            if (createdCat != null) {
-                                finalCatId = createdCat.id
+                            val trimmedName = newCategoryName.trim()
+                            val existingCat = espressoManager.categories.value.find { it.name.equals(trimmedName, ignoreCase = true) }
+                            if (existingCat != null) {
+                                finalCatId = existingCat.id
+                            } else {
+                                val createdCat = espressoManager.createCategory(trimmedName)
+                                if (createdCat != null) {
+                                    finalCatId = createdCat.id
+                                } else {
+                                    quickAddError = espressoManager.statusMessage.value ?: "Error al crear la categoría."
+                                    return@launch
+                                }
                             }
                         }
-                        if (!finalCatId.isNullOrBlank()) {
-                            espressoManager.quickCreateItem(
-                                name = name,
-                                price = price,
-                                categoryId = finalCatId,
-                                barcode = code,
-                                isGeneric = isGeneric,
-                                genericIcon = icon,
-                                trackStock = trackStock,
-                                stockQuantity = stock,
-                                addToCart = false
-                            )
+                        if (finalCatId.isNullOrBlank()) {
+                            quickAddError = "Debe seleccionar o ingresar una categoría válida."
+                            return@launch
                         }
-                        espressoManager.dismissPendingLookup()
+                        val success = espressoManager.quickCreateItem(
+                            name = name,
+                            price = price,
+                            categoryId = finalCatId,
+                            barcode = code,
+                            isGeneric = isGeneric,
+                            genericIcon = icon,
+                            trackStock = trackStock,
+                            stockQuantity = stock,
+                            addToCart = false
+                        )
+                        if (success) {
+                            quickAddError = null
+                            espressoManager.dismissPendingLookup()
+                        } else {
+                            quickAddError = espressoManager.statusMessage.value ?: "No se pudo crear el producto."
+                        }
                     }
                 },
                 onDismiss = {
+                    quickAddError = null
                     espressoManager.dismissPendingLookup()
                 }
             )
@@ -360,48 +370,20 @@ fun EspressoKioskScreen(
                         )
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    IconButton(
+                        onClick = {
+                            showBackofficeAuthDialog = true
+                        },
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(Zinc900, CircleShape)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = if (activeShift != null) Color(0xFF10B981).copy(alpha = 0.2f) else KomandaTokens.AccentTertiary.copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeShift != null) Color(0xFF10B981) else KomandaTokens.AccentTertiary),
-                            modifier = Modifier.clickable {
-                                if (activeShift == null) {
-                                    showOpenShiftDialog = true
-                                } else {
-                                    pinAction = { showCloseShiftDialog = true }
-                                    showPinDialog = true
-                                }
-                            }
-                        ) {
-                            Text(
-                                text = if (activeShift != null) "Caja: $${activeShift?.expectedCash ?: activeShift?.openingBalance}" else "Abrir caja",
-                                color = if (activeShift != null) Color(0xFF10B981) else KomandaTokens.AccentTertiary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                pinAction = { onNavigateToSettings() }
-                                showPinDialog = true
-                            },
-                            modifier = Modifier
-                                .size(50.dp)
-                                .background(Zinc900, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Administración",
-                                tint = Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Administración",
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 

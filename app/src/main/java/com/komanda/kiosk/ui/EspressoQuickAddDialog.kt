@@ -20,8 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.BarcodeSuggestionDto
 import com.komanda.kiosk.core.network.CatalogCategoryDto
 import com.komanda.kiosk.ui.theme.KomandaTokens
+import com.komanda.kiosk.ui.theme.Red400
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -57,6 +61,8 @@ fun EspressoQuickAddDialog(
     scannedBarcode: String?,
     suggestion: BarcodeSuggestionDto?,
     categories: List<CatalogCategoryDto>,
+    errorMessage: String? = null,
+    isLoading: Boolean = false,
     onSave: (
         name: String,
         price: String,
@@ -87,7 +93,7 @@ fun EspressoQuickAddDialog(
     var stockQuantity by remember { mutableStateOf("10") }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    BasicAlertDialog(onDismissRequest = onDismiss) {
+    BasicAlertDialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = Zinc900,
@@ -122,6 +128,22 @@ fun EspressoQuickAddDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Red400.copy(alpha = 0.2f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = Red400,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -273,13 +295,16 @@ fun EspressoQuickAddDialog(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                        enabled = !isLoading
+                    ) {
                         Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(
                         onClick = {
-                            val stock = stockQuantity.toIntOrNull() ?: 0
-                            val code = if (isGeneric) null else scannedBarcode
+                            val stock = (stockQuantity.toIntOrNull() ?: 0).coerceAtLeast(0)
+                            val code = if (isGeneric) null else scannedBarcode?.trim()
                             onSave(
                                 name,
                                 price,
@@ -292,10 +317,18 @@ fun EspressoQuickAddDialog(
                                 stock
                             )
                         },
-                        enabled = name.isNotBlank() && price.isNotBlank() && isCategoryValid,
+                        enabled = name.isNotBlank() && price.isNotBlank() && isCategoryValid && !isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
                     ) {
-                        Text("Guardar producto", fontWeight = FontWeight.Bold)
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = KomandaTokens.AccentPrimary,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Guardar producto", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

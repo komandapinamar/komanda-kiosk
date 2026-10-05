@@ -55,6 +55,8 @@ import com.komanda.kiosk.ui.theme.Zinc950
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EspressoStaffAuthDialog(
+    title: String = "Acceso Personal",
+    description: String? = null,
     scannedBarcode: String? = null,
     isLockedOut: Boolean,
     remainingLockoutSeconds: Int,
@@ -66,6 +68,11 @@ fun EspressoStaffAuthDialog(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+    val effectiveDescription = description ?: if (!scannedBarcode.isNullOrBlank()) {
+        "Ingresá tus credenciales de empleado o admin para autorizar la carga rápida del producto."
+    } else {
+        "Ingresá tus credenciales de empleado o administrador para continuar."
+    }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
@@ -98,7 +105,7 @@ fun EspressoStaffAuthDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Acceso Personal",
+                    text = title,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 24.sp
@@ -119,7 +126,7 @@ fun EspressoStaffAuthDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Ingresá tus credenciales de empleado o admin para autorizar la carga rápida del producto.",
+                    text = effectiveDescription,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Zinc400,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
