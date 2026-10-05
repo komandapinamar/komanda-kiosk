@@ -32,7 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
 
-class FakeEspressoApi : KomandaApi {
+open class FakeEspressoApi : KomandaApi {
     var lastDirectOrderRequest: CreateDirectOrderRequest? = null
     val items = mutableListOf(
         CatalogItemDto(
@@ -64,13 +64,14 @@ class FakeEspressoApi : KomandaApi {
         Response.success(MobileContextResponse(emptyList()))
 
     var mockVerifyStaffSuccess: Boolean = true
+    var mockVerifyStaffRole: String = "admin"
 
     override suspend fun verifyStaff(
         tenantId: String,
         body: VerifyStaffRequest
     ): Response<VerifyStaffResponse> {
         return if (mockVerifyStaffSuccess) {
-            Response.success(VerifyStaffResponse(authorized = true, userId = "usr-1", role = "admin"))
+            Response.success(VerifyStaffResponse(authorized = true, userId = "usr-1", role = mockVerifyStaffRole))
         } else {
             Response.error(401, okhttp3.ResponseBody.create(null, "{\"error\": \"INVALID_CREDENTIALS\"}"))
         }

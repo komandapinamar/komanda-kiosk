@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 
 enum class EspressoScreen {
     KIOSK,
+    BACKOFFICE,
     PRINTER_SETTINGS
 }
 
@@ -160,16 +161,27 @@ class KioskActivity : ComponentActivity() {
                             EspressoScreen.KIOSK -> {
                                 EspressoKioskScreen(
                                     espressoManager = manager,
-                                    onNavigateToSettings = { currentScreen = EspressoScreen.PRINTER_SETTINGS },
+                                    onNavigateToBackoffice = { currentScreen = EspressoScreen.BACKOFFICE },
+                                    onNavigateToSettings = { currentScreen = EspressoScreen.BACKOFFICE },
                                     onConfirmCheckout = {
                                         Log.i(tag, "Checkout requested for ${manager.cart.value.size} items")
+                                    }
+                                )
+                            }
+                            EspressoScreen.BACKOFFICE -> {
+                                BackofficeScreen(
+                                    espressoManager = manager,
+                                    printerRouter = printerRouter,
+                                    onBackToKiosk = {
+                                        manager.endStaffSession()
+                                        currentScreen = EspressoScreen.KIOSK
                                     }
                                 )
                             }
                             EspressoScreen.PRINTER_SETTINGS -> {
                                 PrinterSettingsScreen(
                                     router = printerRouter,
-                                    onBack = { currentScreen = EspressoScreen.KIOSK }
+                                    onBack = { currentScreen = EspressoScreen.BACKOFFICE }
                                 )
                             }
                         }
