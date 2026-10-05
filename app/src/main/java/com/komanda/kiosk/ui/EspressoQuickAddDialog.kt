@@ -28,6 +28,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,19 +57,35 @@ fun EspressoQuickAddDialog(
     scannedBarcode: String?,
     suggestion: BarcodeSuggestionDto?,
     categories: List<CatalogCategoryDto>,
-    onSave: (name: String, price: String, categoryId: String, barcode: String?, isGeneric: Boolean, icon: String?, trackStock: Boolean, stock: Int) -> Unit,
+    onSave: (
+        name: String,
+        price: String,
+        categoryId: String?,
+        newCategoryName: String?,
+        barcode: String?,
+        isGeneric: Boolean,
+        icon: String?,
+        trackStock: Boolean,
+        stock: Int
+    ) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(suggestion?.name ?: "") }
     var price by remember { mutableStateOf("") }
-    var selectedCategoryId by remember { mutableStateOf(categories.firstOrNull()?.id ?: "") }
+    val initialMatchedCategory = suggestion?.suggestedCategory?.let { sug ->
+        categories.find { it.name.equals(sug, ignoreCase = true) }
+    }
+    var isCreatingNewCategory by remember { mutableStateOf(categories.isEmpty()) }
+    var newCategoryName by remember {
+        mutableStateOf(if (categories.isEmpty()) (suggestion?.suggestedCategory ?: "") else "")
+    }
+    var selectedCategoryId by remember {
+        mutableStateOf(initialMatchedCategory?.id ?: categories.firstOrNull()?.id ?: "")
+    }
     var isGeneric by remember { mutableStateOf(scannedBarcode.isNullOrBlank()) }
-    var genericIcon by remember { mutableStateOf("General") }
     var trackStock by remember { mutableStateOf(false) }
     var stockQuantity by remember { mutableStateOf("10") }
     var dropdownExpanded by remember { mutableStateOf(false) }
-
-    val tags = listOf("General", "Bebida", "Snack", "Café", "Panadería", "Comida", "Golosinas", "Fruta")
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
@@ -122,30 +139,6 @@ fun EspressoQuickAddDialog(
                     Text("Producto genérico táctil (sin código de barra)")
                 }
 
-                if (isGeneric) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Etiqueta rápida:", style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(tags) { tag ->
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        if (genericIcon == tag) KomandaTokens.AccentTertiary.copy(alpha = 0.2f) else Zinc950,
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable { genericIcon = tag }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(tag, fontSize = 12.sp, color = if (genericIcon == tag) KomandaTokens.AccentTertiary else Color.White)
-                            }
-                        }
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
@@ -170,32 +163,69 @@ fun EspressoQuickAddDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Selector de Categoría
-                if (categories.isNotEmpty()) {
-                    ExposedDropdownMenuBox(
-                        expanded = dropdownExpanded,
-                        onExpandedChange = { dropdownExpanded = it }
-                    ) {
-                        val currentCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: "Elegir categoría"
+                // Selector de Categoría (sincronizado con Backoffice)
+                if (isCreatingNewCategory || categories.isEmpty()) {
+                    Column {
                         OutlinedTextField(
-                            value = currentCategoryName,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Categoría") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
+                            value = newCategoryName,
+                            onValueChange = { newCategoryName = it },
+                            label = { Text("Nombre de la nueva categoría") },
+                            placeholder = { Text("Ej. Golosinas, Bebidas, Cigarrillos") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = KomandaTokens.AccentTertiary,
+                                unfocusedBorderColor = Zinc800
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        ExposedDropdownMenu(
+                        if (categories.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            TextButton(
+                                onClick = { isCreatingNewCategory = false },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("Elegir categoría existente", color = KomandaTokens.AccentTertiary, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                } else {
+                    Column {
+                        ExposedDropdownMenuBox(
                             expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false }
+                            onExpandedChange = { dropdownExpanded = it }
                         ) {
-                            categories.forEach { category ->
+                            val currentCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: "Elegir categoría"
+                            OutlinedTextField(
+                                value = currentCategoryName,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Categoría") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = KomandaTokens.AccentTertiary,
+                                    unfocusedBorderColor = Zinc800
+                                ),
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dropdownExpanded,
+                                onDismissRequest = { dropdownExpanded = false }
+                            ) {
+                                categories.forEach { category ->
+                                    DropdownMenuItem(
+                                        text = { Text(category.name) },
+                                        onClick = {
+                                            selectedCategoryId = category.id
+                                            dropdownExpanded = false
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
-                                    text = { Text(category.name) },
+                                    text = { Text("+ Nueva categoría...", fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary) },
                                     onClick = {
-                                        selectedCategoryId = category.id
+                                        isCreatingNewCategory = true
                                         dropdownExpanded = false
                                     }
                                 )
@@ -233,6 +263,12 @@ fun EspressoQuickAddDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                val isCategoryValid = if (isCreatingNewCategory || categories.isEmpty()) {
+                    newCategoryName.isNotBlank()
+                } else {
+                    selectedCategoryId.isNotBlank()
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.fillMaxWidth()
@@ -244,12 +280,22 @@ fun EspressoQuickAddDialog(
                         onClick = {
                             val stock = stockQuantity.toIntOrNull() ?: 0
                             val code = if (isGeneric) null else scannedBarcode
-                            onSave(name, price, selectedCategoryId, code, isGeneric, if (isGeneric) genericIcon else null, trackStock, stock)
+                            onSave(
+                                name,
+                                price,
+                                if (isCreatingNewCategory || categories.isEmpty()) null else selectedCategoryId,
+                                if (isCreatingNewCategory || categories.isEmpty()) newCategoryName.trim() else null,
+                                code,
+                                isGeneric,
+                                null,
+                                trackStock,
+                                stock
+                            )
                         },
-                        enabled = name.isNotBlank() && price.isNotBlank() && selectedCategoryId.isNotBlank(),
+                        enabled = name.isNotBlank() && price.isNotBlank() && isCategoryValid,
                         colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
                     ) {
-                        Text("Guardar y agregar", fontWeight = FontWeight.Bold)
+                        Text("Guardar producto", fontWeight = FontWeight.Bold)
                     }
                 }
             }

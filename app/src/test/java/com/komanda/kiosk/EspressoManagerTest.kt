@@ -8,6 +8,7 @@ import com.komanda.kiosk.core.network.CatalogCategoryDto
 import com.komanda.kiosk.core.network.CatalogItemDto
 import com.komanda.kiosk.core.network.CatalogResponse
 import com.komanda.kiosk.core.network.CloseCashShiftRequest
+import com.komanda.kiosk.core.network.CreateCategoryRequest
 import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
 import com.komanda.kiosk.core.network.KioskPaymentCancelResponse
@@ -95,11 +96,26 @@ class FakeEspressoApi : KomandaApi {
         return Response.success(order)
     }
 
+    val categories = mutableListOf(
+        CatalogCategoryDto(id = "cat-1", name = "Bebidas"),
+        CatalogCategoryDto(id = "cat-2", name = "Cafetería")
+    )
+
     override suspend fun listCategories(tenantId: String): Response<CatalogResponse<CatalogCategoryDto>> =
-        Response.success(CatalogResponse(listOf(
-            CatalogCategoryDto(id = "cat-1", name = "Bebidas"),
-            CatalogCategoryDto(id = "cat-2", name = "Cafetería")
-        )))
+        Response.success(CatalogResponse(categories.toList()))
+
+    override suspend fun createCategory(
+        tenantId: String,
+        body: CreateCategoryRequest
+    ): Response<CatalogCategoryDto> {
+        val newCat = CatalogCategoryDto(
+            id = "cat-${categories.size + 1}",
+            name = body.name,
+            description = body.description
+        )
+        categories.add(newCat)
+        return Response.success(newCat)
+    }
 
     override suspend fun listItems(tenantId: String): Response<CatalogResponse<CatalogItemDto>> =
         Response.success(CatalogResponse(items))
@@ -302,7 +318,61 @@ class EspressoManagerTest {
         assertTrue(success)
         assertEquals(1, manager.cart.value.size)
         assertEquals("Galletitas Oreo", manager.cart.value[0].item.name)
-        assertNull(manager.pendingLookup.value)
+        assertEquals(1, manager.items.value.filter { it.name == "Galletitas Oreo" }.size)
+    }
+
+    @Test
+    fun staffSession_whenActive_quickCreateItemDoesNotPolluteCart() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        manager.startStaffSession(userId = "usr-1", role = "admin", email = "admin@kiosk.com")
+        assertTrue(manager.isStaffSessionActive())
+        assertNotNull(manager.activeStaffSession.value)
+
+        val success = manager.quickCreateItem(
+            name = "Alfajor Havanna 70% Cacao",
+            price = "2500.00",
+            categoryId = "cat-1",
+            barcode = "7791234567890",
+            trackStock = true,
+            stockQuantity = 24
+        )
+
+        assertTrue(success)
+        // Cart MUST remain empty in batch stocking mode!
+        assertEquals(0, manager.cart.value.size)
+        // Product MUST be present in catalog!
+        assertEquals(1, manager.items.value.filter { it.name == "Alfajor Havanna 70% Cacao" }.size)
+    }
+
+    @Test
+    fun createCategory_persistsAndAppendsToCategories() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        val initialSize = manager.categories.value.size
+
+        val newCat = manager.createCategory("Bazar y Regalería")
+
+        assertNotNull(newCat)
+        assertEquals("Bazar y Regalería", newCat?.name)
+        assertEquals(initialSize + 1, manager.categories.value.size)
+        assertTrue(manager.categories.value.any { it.name == "Bazar y Regalería" })
+    }
+
+    @Test
+    fun endStaffSession_clearsSessionAndLeavesCartIntact() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        manager.startStaffSession(userId = "usr-1", role = "admin", email = "admin@kiosk.com")
+        assertTrue(manager.isStaffSessionActive())
+
+        manager.endStaffSession()
+        org.junit.Assert.assertFalse(manager.isStaffSessionActive())
+        assertNull(manager.activeStaffSession.value)
     }
 
     @Test

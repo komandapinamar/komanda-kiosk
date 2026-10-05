@@ -36,7 +36,7 @@ class UnregisteredBarcodeDialogSanityTest {
     }
 
     @Test
-    fun kioskScreen_routesUnknownBarcodeToCustomerDialogFirst() {
+    fun kioskScreen_routesUnknownBarcodeToStaffAuthDirectly() {
         val projectDir = File(System.getProperty("user.dir") ?: ".")
         val screenFile = File(projectDir, "src/main/java/com/komanda/kiosk/ui/EspressoKioskScreen.kt")
 
@@ -44,8 +44,8 @@ class UnregisteredBarcodeDialogSanityTest {
         val content = screenFile.readText()
 
         assertTrue(
-            "EspressoKioskScreen should invoke EspressoUnregisteredBarcodeDialog when lookup is pending",
-            content.contains("EspressoUnregisteredBarcodeDialog(")
+            "EspressoKioskScreen should invoke EspressoStaffAuthDialog directly when lookup is pending",
+            content.contains("EspressoStaffAuthDialog(")
         )
     }
 }

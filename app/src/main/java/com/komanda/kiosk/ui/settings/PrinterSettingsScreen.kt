@@ -278,7 +278,7 @@ private fun PrinterConfigCard(
                 ) {
                     Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp), tint = Zinc300)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Probar Impresión", fontSize = 12.sp)
+                    Text("Probar Impresión Kiosk", fontSize = 12.sp)
                 }
             }
         }

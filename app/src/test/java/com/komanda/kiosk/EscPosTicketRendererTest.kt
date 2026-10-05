@@ -95,6 +95,20 @@ class EscPosTicketRendererTest {
     }
 
     @Test
+    fun `renderCounterTicket with anonymous customer suppresses customer block and cafe ascii`() {
+        val anonymousPayload = samplePayload.copy(
+            customer = TicketCustomer(name = "", phone = null, address = null)
+        )
+        val bytes = EscPosTicketRenderer.renderCounterTicket(anonymousPayload)
+        val text = String(bytes, Charsets.ISO_8859_1)
+
+        assertFalse("Must not include CLIENTE header", text.contains("CLIENTE"))
+        assertFalse("Must not include Sin nombre", text.contains("Sin nombre"))
+        assertFalse("Must not include cafe ASCII cup", text.contains(".------."))
+        assertTrue("Must include clean thank you message", text.contains("¡Gracias por su compra!"))
+    }
+
+    @Test
     fun `renderKioskTestTicket outputs clean totem diagnostic ticket`() {
         val testPayload = TicketPayload(
             orderId = "test-check",

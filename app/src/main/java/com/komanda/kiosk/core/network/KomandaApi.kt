@@ -40,6 +40,13 @@ interface KomandaApi {
         @Path("tenantId") tenantId: String
     ): Response<CatalogResponse<CatalogCategoryDto>>
 
+    @Headers("Content-Type: application/json")
+    @POST("/api/v1/tenants/{tenantId}/catalog/categories")
+    suspend fun createCategory(
+        @Path("tenantId") tenantId: String,
+        @Body body: CreateCategoryRequest
+    ): Response<CatalogCategoryDto>
+
     @GET("/api/v1/tenants/{tenantId}/catalog/items")
     suspend fun listItems(
         @Path("tenantId") tenantId: String
