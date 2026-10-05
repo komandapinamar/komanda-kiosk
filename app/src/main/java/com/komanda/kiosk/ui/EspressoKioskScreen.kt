@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komanda.kiosk.core.network.CatalogItemDto
 import com.komanda.kiosk.ui.qr.KioskQrPaymentDialog
 import com.komanda.kiosk.ui.theme.KomandaTokens
+import com.komanda.kiosk.ui.theme.Zinc400
 import com.komanda.kiosk.ui.theme.Zinc700
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
@@ -100,6 +101,7 @@ fun EspressoKioskScreen(
     val activeShift by espressoManager.activeShift.collectAsStateWithLifecycle()
     val activeQrSession by espressoManager.activeQrSession.collectAsStateWithLifecycle()
     val approvedPayment by espressoManager.approvedPayment.collectAsStateWithLifecycle()
+    val activeStaffSession by espressoManager.activeStaffSession.collectAsStateWithLifecycle()
 
     var viewMode by remember { mutableStateOf(KioskViewMode.SCANNER) }
     var showPinDialog by remember { mutableStateOf(false) }
@@ -108,12 +110,17 @@ fun EspressoKioskScreen(
     var showOpenShiftDialog by remember { mutableStateOf(false) }
     var showCloseShiftDialog by remember { mutableStateOf(false) }
     var showCheckoutDialog by remember { mutableStateOf(false) }
-    var showStaffAuthDialog by remember { mutableStateOf(false) }
-    var isStaffAuthorizedForQuickAdd by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         espressoManager.loadCatalog()
         espressoManager.loadCashShift()
+    }
+
+    LaunchedEffect(activeStaffSession) {
+        while (activeStaffSession != null) {
+            kotlinx.coroutines.delay(15_000L)
+            espressoManager.isStaffSessionActive()
+        }
     }
 
     if (showCheckoutDialog) {
@@ -214,28 +221,37 @@ fun EspressoKioskScreen(
     if (pendingLookup != null) {
         val (barcode, suggestion) = pendingLookup!!
 
-        if (isStaffAuthorizedForQuickAdd) {
+        if (activeStaffSession != null) {
             EspressoQuickAddDialog(
                 scannedBarcode = barcode,
                 suggestion = suggestion,
                 categories = categories,
-                onSave = { name, price, categoryId, code, isGeneric, icon, trackStock, stock ->
+                onSave = { name, price, categoryId, newCategoryName, code, isGeneric, icon, trackStock, stock ->
                     coroutineScope.launch {
-                        espressoManager.quickCreateItem(
-                            name = name,
-                            price = price,
-                            categoryId = categoryId,
-                            barcode = code,
-                            isGeneric = isGeneric,
-                            genericIcon = icon,
-                            trackStock = trackStock,
-                            stockQuantity = stock
-                        )
-                        isStaffAuthorizedForQuickAdd = false
+                        var finalCatId = categoryId
+                        if (!newCategoryName.isNullOrBlank()) {
+                            val createdCat = espressoManager.createCategory(newCategoryName)
+                            if (createdCat != null) {
+                                finalCatId = createdCat.id
+                            }
+                        }
+                        if (!finalCatId.isNullOrBlank()) {
+                            espressoManager.quickCreateItem(
+                                name = name,
+                                price = price,
+                                categoryId = finalCatId,
+                                barcode = code,
+                                isGeneric = isGeneric,
+                                genericIcon = icon,
+                                trackStock = trackStock,
+                                stockQuantity = stock,
+                                addToCart = false
+                            )
+                        }
+                        espressoManager.dismissPendingLookup()
                     }
                 },
                 onDismiss = {
-                    isStaffAuthorizedForQuickAdd = false
                     espressoManager.dismissPendingLookup()
                 }
             )
@@ -251,9 +267,7 @@ fun EspressoKioskScreen(
                     coroutineScope.launch {
                         staffAuthError = null
                         val success = espressoManager.verifyStaffCredentials(email, password)
-                        if (success) {
-                            isStaffAuthorizedForQuickAdd = true
-                        } else {
+                        if (!success) {
                             staffAuthError = espressoManager.statusMessage.value
                         }
                     }
@@ -278,6 +292,53 @@ fun EspressoKioskScreen(
                     .fillMaxHeight()
                     .padding(24.dp)
             ) {
+                if (activeStaffSession != null) {
+                    Surface(
+                        color = Zinc900,
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, KomandaTokens.AccentTertiary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null,
+                                    tint = KomandaTokens.AccentTertiary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Modo Carga Rápida Activo",
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        fontSize = 17.sp
+                                    )
+                                    Text(
+                                        text = "Operador: ${activeStaffSession?.operatorEmail} • Escaneá para registrar productos",
+                                        color = Zinc400,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = { espressoManager.endStaffSession() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Color.White),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Salir de Modo Carga", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+
                 // Top Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),

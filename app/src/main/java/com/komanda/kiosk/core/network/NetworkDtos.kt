@@ -72,6 +72,12 @@ data class CatalogItemDto(
 )
 
 @JsonClass(generateAdapter = true)
+data class CreateCategoryRequest(
+    val name: String,
+    val description: String? = null
+)
+
+@JsonClass(generateAdapter = true)
 data class CreateCatalogItemRequest(
     val categoryId: String,
     val name: String,

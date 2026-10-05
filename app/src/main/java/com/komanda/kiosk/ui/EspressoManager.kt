@@ -10,6 +10,7 @@ import com.komanda.kiosk.core.network.CashShiftDto
 import com.komanda.kiosk.core.network.CatalogCategoryDto
 import com.komanda.kiosk.core.network.CatalogItemDto
 import com.komanda.kiosk.core.network.CloseCashShiftRequest
+import com.komanda.kiosk.core.network.CreateCategoryRequest
 import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
 import com.komanda.kiosk.core.network.DirectOrderCustomerRequest
@@ -30,6 +31,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+data class StaffSession(
+    val userId: String,
+    val role: String,
+    val operatorEmail: String,
+    val authenticatedAtMillis: Long = System.currentTimeMillis(),
+    val lastActivityAtMillis: Long = System.currentTimeMillis()
+)
 
 class EspressoManager(
     val tenantId: String,
@@ -72,6 +81,43 @@ class EspressoManager(
 
     private val _approvedPayment = MutableStateFlow<KioskPaymentStatusResponse?>(null)
     val approvedPayment: StateFlow<KioskPaymentStatusResponse?> = _approvedPayment.asStateFlow()
+
+    private val _activeStaffSession = MutableStateFlow<StaffSession?>(null)
+    val activeStaffSession: StateFlow<StaffSession?> = _activeStaffSession.asStateFlow()
+
+    private val staffSessionInactivityTimeoutMillis = 10 * 60 * 1000L // 10 minutes
+
+    fun isStaffSessionActive(): Boolean {
+        val session = _activeStaffSession.value ?: return false
+        val now = System.currentTimeMillis()
+        if (now - session.lastActivityAtMillis > staffSessionInactivityTimeoutMillis) {
+            endStaffSession(reason = "Sesión de carga cerrada por inactividad (10 minutos).")
+            return false
+        }
+        return true
+    }
+
+    fun startStaffSession(userId: String, role: String, email: String) {
+        val now = System.currentTimeMillis()
+        _activeStaffSession.value = StaffSession(
+            userId = userId,
+            role = role,
+            operatorEmail = email,
+            authenticatedAtMillis = now,
+            lastActivityAtMillis = now
+        )
+        _statusMessage.value = "Modo Carga activado para $email"
+    }
+
+    fun touchStaffActivity() {
+        val current = _activeStaffSession.value ?: return
+        _activeStaffSession.value = current.copy(lastActivityAtMillis = System.currentTimeMillis())
+    }
+
+    fun endStaffSession(reason: String = "Modo Carga finalizado. Terminal lista para clientes.") {
+        _activeStaffSession.value = null
+        _statusMessage.value = reason
+    }
 
     val totalAmount: Double
         get() = _cart.value.sumOf { it.lineTotal }
@@ -201,6 +247,7 @@ class EspressoManager(
     suspend fun onBarcodeScanned(barcode: String) {
         val clean = barcode.trim()
         if (clean.isBlank()) return
+        touchStaffActivity()
 
         // 1. Fast in-memory lookup (<150ms)
         val localItem = _items.value.find { it.barcode == clean }
@@ -233,6 +280,29 @@ class EspressoManager(
         }
     }
 
+    suspend fun createCategory(name: String): CatalogCategoryDto? {
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return null
+        _isLoading.value = true
+        touchStaffActivity()
+        try {
+            val res = api.createCategory(tenantId, CreateCategoryRequest(name = cleanName))
+            if (res.isSuccessful && res.body() != null) {
+                val created = res.body()!!
+                _categories.value = _categories.value + created
+                return created
+            } else {
+                _statusMessage.value = "Error al crear la categoría."
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to create category", e)
+            _statusMessage.value = "Error de conexión al crear categoría."
+        } finally {
+            _isLoading.value = false
+        }
+        return null
+    }
+
     suspend fun quickCreateItem(
         name: String,
         price: String,
@@ -241,9 +311,11 @@ class EspressoManager(
         isGeneric: Boolean = false,
         genericIcon: String? = null,
         trackStock: Boolean = false,
-        stockQuantity: Int = 0
+        stockQuantity: Int = 0,
+        addToCart: Boolean = !isStaffSessionActive()
     ): Boolean {
         _isLoading.value = true
+        touchStaffActivity()
         try {
             val formattedPrice = if (price.contains(".")) price else "$price.00"
             val request = CreateCatalogItemRequest(
@@ -262,9 +334,15 @@ class EspressoManager(
             if (res.isSuccessful && res.body() != null) {
                 val created = res.body()!!
                 _items.value = _items.value + created
-                addToCart(created)
+                if (addToCart) {
+                    addToCart(created)
+                }
                 _pendingLookup.value = null
-                _statusMessage.value = "Producto creado y agregado al carrito!"
+                _statusMessage.value = if (addToCart) {
+                    "Producto creado y agregado al carrito!"
+                } else {
+                    "¡Producto \"${created.name}\" guardado en el catálogo!"
+                }
                 return true
             } else {
                 _statusMessage.value = "No se pudo crear el producto."
@@ -302,6 +380,12 @@ class EspressoManager(
             val res = api.verifyStaff(tenantId, VerifyStaffRequest(email = email.trim(), password = password))
             if (res.isSuccessful && res.body()?.authorized == true) {
                 failedStaffAuthAttempts = 0
+                val body = res.body()!!
+                startStaffSession(
+                    userId = body.userId ?: "staff",
+                    role = body.role ?: "employee",
+                    email = email.trim()
+                )
                 return true
             } else {
                 failedStaffAuthAttempts++
