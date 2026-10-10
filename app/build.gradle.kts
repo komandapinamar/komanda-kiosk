@@ -21,8 +21,27 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = file("release-key.jks")
+            val storePass = providers.gradleProperty("KEYSTORE_PASSWORD")
+                .orElse(providers.environmentVariable("KEYSTORE_PASSWORD")).orNull
+            val alias = providers.gradleProperty("KEY_ALIAS")
+                .orElse(providers.environmentVariable("KEY_ALIAS")).orNull
+            val keyPass = providers.gradleProperty("KEY_PASSWORD")
+                .orElse(providers.environmentVariable("KEY_PASSWORD")).orNull
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = storePass
+                keyAlias = alias
+                keyPassword = keyPass
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             optimization {
                 enable = false
             }
@@ -37,6 +56,23 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+}
+
+tasks.configureEach {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        doFirst {
+            val keystoreFile = file("release-key.jks")
+            val hasStorePassword = providers.gradleProperty("KEYSTORE_PASSWORD").isPresent ||
+                providers.environmentVariable("KEYSTORE_PASSWORD").isPresent
+            val hasAlias = providers.gradleProperty("KEY_ALIAS").isPresent ||
+                providers.environmentVariable("KEY_ALIAS").isPresent
+            val hasKeyPassword = providers.gradleProperty("KEY_PASSWORD").isPresent ||
+                providers.environmentVariable("KEY_PASSWORD").isPresent
+            if (!keystoreFile.exists() || !hasStorePassword || !hasAlias || !hasKeyPassword) {
+                throw GradleException("Release signing requires app/release-key.jks and KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.")
+            }
+        }
     }
 }
 
