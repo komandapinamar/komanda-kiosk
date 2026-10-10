@@ -465,7 +465,9 @@ class EspressoManager(
                     )
                 },
                 customer = DirectOrderCustomerRequest(name = customerName),
-                notes = if (paymentMethod == "cash") "Pago en efectivo en mostrador" else null
+                notes = if (paymentMethod == "cash") "Pago en efectivo en mostrador" else null,
+                tender = if (paymentMethod == "cash") "cash" else null,
+                paymentStatus = if (paymentMethod == "cash") "pending" else null
             )
 
             val res = api.createDirectOrder(tenantId, idempotencyKey, request)

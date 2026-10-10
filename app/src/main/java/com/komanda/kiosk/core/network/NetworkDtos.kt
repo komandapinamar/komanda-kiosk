@@ -20,7 +20,9 @@ data class DirectOrderCustomerRequest(
 data class CreateDirectOrderRequest(
     val items: List<DirectOrderItemRequest>,
     val customer: DirectOrderCustomerRequest,
-    val notes: String? = null
+    val notes: String? = null,
+    val tender: String? = null,
+    val paymentStatus: String? = null
 )
 
 @JsonClass(generateAdapter = true)

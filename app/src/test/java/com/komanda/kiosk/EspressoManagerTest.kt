@@ -414,6 +414,8 @@ class EspressoManagerTest {
         assertTrue(success)
         assertEquals(0, manager.cart.value.size)
         assertEquals("Pago en efectivo en mostrador", api.lastDirectOrderRequest?.notes)
+        assertEquals("cash", api.lastDirectOrderRequest?.tender)
+        assertEquals("pending", api.lastDirectOrderRequest?.paymentStatus)
         assertTrue(manager.statusMessage.value?.contains("Acercate a caja a abonar en efectivo") == true)
     }
 
@@ -429,6 +431,8 @@ class EspressoManagerTest {
         assertTrue(success)
         assertEquals(0, manager.cart.value.size)
         assertNull(api.lastDirectOrderRequest?.notes)
+        assertNull(api.lastDirectOrderRequest?.tender)
+        assertNull(api.lastDirectOrderRequest?.paymentStatus)
         assertTrue(manager.statusMessage.value?.contains("¡Cobro confirmado!") == true)
     }
 
