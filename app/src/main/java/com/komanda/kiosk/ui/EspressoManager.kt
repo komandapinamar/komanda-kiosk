@@ -21,6 +21,7 @@ import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
 import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
+import com.komanda.kiosk.core.network.VerifyStaffRequest
 import com.komanda.kiosk.hardware.printing.PrinterRouter
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -271,6 +272,50 @@ class EspressoManager(
         } catch (e: Exception) {
             Log.e(tag, "Failed to create catalog item", e)
             _statusMessage.value = "Error de red al crear el producto."
+        } finally {
+            _isLoading.value = false
+        }
+        return false
+    }
+
+    private var failedStaffAuthAttempts = 0
+    private var staffLockoutUntilMillis = 0L
+
+    val isStaffLockedOut: Boolean
+        get() = System.currentTimeMillis() < staffLockoutUntilMillis
+
+    val remainingLockoutSeconds: Int
+        get() = ((staffLockoutUntilMillis - System.currentTimeMillis()) / 1000).coerceAtLeast(0).toInt()
+
+    fun resetStaffLockoutForTesting() {
+        failedStaffAuthAttempts = 0
+        staffLockoutUntilMillis = 0L
+    }
+
+    suspend fun verifyStaffCredentials(email: String, password: String): Boolean {
+        if (isStaffLockedOut) {
+            _statusMessage.value = "Acceso bloqueado por seguridad. Intente en $remainingLockoutSeconds s."
+            return false
+        }
+        _isLoading.value = true
+        try {
+            val res = api.verifyStaff(tenantId, VerifyStaffRequest(email = email.trim(), password = password))
+            if (res.isSuccessful && res.body()?.authorized == true) {
+                failedStaffAuthAttempts = 0
+                return true
+            } else {
+                failedStaffAuthAttempts++
+                if (failedStaffAuthAttempts >= 3) {
+                    staffLockoutUntilMillis = System.currentTimeMillis() + (5 * 60 * 1000L) // 5 minutes
+                    _statusMessage.value = "3 intentos fallidos. Acceso bloqueado por 5 minutos."
+                } else {
+                    val remaining = 3 - failedStaffAuthAttempts
+                    _statusMessage.value = "Credenciales incorrectas o usuario no asignado a este local. ($remaining intentos restantes)"
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Staff verification error", e)
+            _statusMessage.value = "Error de conexión al verificar credenciales."
         } finally {
             _isLoading.value = false
         }

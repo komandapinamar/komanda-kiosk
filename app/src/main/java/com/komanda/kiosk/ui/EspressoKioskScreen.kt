@@ -108,6 +108,8 @@ fun EspressoKioskScreen(
     var showOpenShiftDialog by remember { mutableStateOf(false) }
     var showCloseShiftDialog by remember { mutableStateOf(false) }
     var showCheckoutDialog by remember { mutableStateOf(false) }
+    var showStaffAuthDialog by remember { mutableStateOf(false) }
+    var isStaffAuthorizedForQuickAdd by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         espressoManager.loadCatalog()
@@ -211,26 +213,62 @@ fun EspressoKioskScreen(
 
     if (pendingLookup != null) {
         val (barcode, suggestion) = pendingLookup!!
-        EspressoQuickAddDialog(
-            scannedBarcode = barcode,
-            suggestion = suggestion,
-            categories = categories,
-            onSave = { name, price, categoryId, code, isGeneric, icon, trackStock, stock ->
-                coroutineScope.launch {
-                    espressoManager.quickCreateItem(
-                        name = name,
-                        price = price,
-                        categoryId = categoryId,
-                        barcode = code,
-                        isGeneric = isGeneric,
-                        genericIcon = icon,
-                        trackStock = trackStock,
-                        stockQuantity = stock
-                    )
+
+        if (isStaffAuthorizedForQuickAdd) {
+            EspressoQuickAddDialog(
+                scannedBarcode = barcode,
+                suggestion = suggestion,
+                categories = categories,
+                onSave = { name, price, categoryId, code, isGeneric, icon, trackStock, stock ->
+                    coroutineScope.launch {
+                        espressoManager.quickCreateItem(
+                            name = name,
+                            price = price,
+                            categoryId = categoryId,
+                            barcode = code,
+                            isGeneric = isGeneric,
+                            genericIcon = icon,
+                            trackStock = trackStock,
+                            stockQuantity = stock
+                        )
+                        isStaffAuthorizedForQuickAdd = false
+                    }
+                },
+                onDismiss = {
+                    isStaffAuthorizedForQuickAdd = false
+                    espressoManager.dismissPendingLookup()
                 }
-            },
-            onDismiss = { espressoManager.dismissPendingLookup() }
-        )
+            )
+        } else if (showStaffAuthDialog) {
+            var staffAuthError by remember { mutableStateOf<String?>(null) }
+            EspressoStaffAuthDialog(
+                isLockedOut = espressoManager.isStaffLockedOut,
+                remainingLockoutSeconds = espressoManager.remainingLockoutSeconds,
+                isLoading = isLoading,
+                errorMessage = staffAuthError,
+                onConfirm = { email, password ->
+                    coroutineScope.launch {
+                        staffAuthError = null
+                        val success = espressoManager.verifyStaffCredentials(email, password)
+                        if (success) {
+                            showStaffAuthDialog = false
+                            isStaffAuthorizedForQuickAdd = true
+                        } else {
+                            staffAuthError = espressoManager.statusMessage.value
+                        }
+                    }
+                },
+                onDismiss = {
+                    showStaffAuthDialog = false
+                }
+            )
+        } else {
+            EspressoUnregisteredBarcodeDialog(
+                barcode = barcode,
+                onDismiss = { espressoManager.dismissPendingLookup() },
+                onStaffUnlock = { showStaffAuthDialog = true }
+            )
+        }
     }
 
     Box(
