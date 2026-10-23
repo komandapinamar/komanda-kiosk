@@ -80,11 +80,6 @@ fun PrinterSettingsScreen(
     router: PrinterRouter,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val printers by router.printers.collectAsStateWithLifecycle()
-    var showAddNetworkDialog by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -105,46 +100,90 @@ fun PrinterSettingsScreen(
                         )
                     }
                 },
-                actions = {
-                    Button(
-                        onClick = { showAddNetworkDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = KomandaTokens.AccentTertiary,
-                            contentColor = KomandaTokens.AccentPrimary
-                        ),
-                        shape = RoundedCornerShape(2.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Agregar Impresora de Red", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Zinc950)
             )
         },
         containerColor = Zinc950
     ) { padding ->
-        LazyColumn(
+        PrinterSettingsContent(
+            router = router,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 24.dp, vertical = 16.dp),
+            showHeaderAction = true
+        )
+    }
+}
+
+@Composable
+fun PrinterSettingsContent(
+    router: PrinterRouter,
+    modifier: Modifier = Modifier,
+    showHeaderAction: Boolean = true
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val printers by router.printers.collectAsStateWithLifecycle()
+    var showAddNetworkDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        if (showHeaderAction) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Dispositivos Configurados (${printers.size})",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Asigná el tipo de comanda y reglas de disparo automático por cada impresora.",
+                        fontSize = 13.sp,
+                        color = Zinc400
+                    )
+                }
+                Button(
+                    onClick = { showAddNetworkDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = KomandaTokens.AccentTertiary,
+                        contentColor = KomandaTokens.AccentPrimary
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Agregar Impresora de Red", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Text(
-                    text = "Dispositivos Configurados (${printers.size})",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Zinc400
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Asigná el tipo de comanda (Cocina o Mostrador) y las reglas de disparo automático por cada impresora.",
-                    fontSize = 13.sp,
-                    color = Zinc600
-                )
+            if (!showHeaderAction) {
+                item {
+                    Text(
+                        text = "Dispositivos Configurados (${printers.size})",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Zinc400
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Asigná el tipo de comanda (Cocina o Mostrador) y las reglas de disparo automático por cada impresora.",
+                        fontSize = 13.sp,
+                        color = Zinc600
+                    )
+                }
             }
 
             items(printers, key = { it.id }) { config ->

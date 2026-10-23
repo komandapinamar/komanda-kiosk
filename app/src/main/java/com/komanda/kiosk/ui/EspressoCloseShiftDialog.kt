@@ -29,8 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
 import com.komanda.kiosk.core.network.CashShiftDto
 import com.komanda.kiosk.ui.theme.KomandaTokens
+import com.komanda.kiosk.ui.theme.Zinc400
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -39,10 +41,13 @@ import com.komanda.kiosk.ui.theme.Zinc950
 @Composable
 fun EspressoCloseShiftDialog(
     shift: CashShiftDto,
+    isEmployee: Boolean = false,
     onConfirm: (closingBalance: String, notes: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var closingBalance by remember { mutableStateOf(shift.expectedCash ?: shift.openingBalance) }
+    var closingBalance by remember {
+        mutableStateOf(if (isEmployee) "" else (shift.expectedCash ?: shift.openingBalance))
+    }
     var notes by remember { mutableStateOf("") }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
@@ -58,7 +63,7 @@ fun EspressoCloseShiftDialog(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "Cerrar caja y arqueo",
+                    text = if (isEmployee) "Cierre y Arqueo Ciego de Caja" else "Cerrar caja y arqueo",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -82,26 +87,46 @@ fun EspressoCloseShiftDialog(
                         Text("$${shift.openingBalance}", fontWeight = FontWeight.Bold)
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Ventas en efectivo (${shift.orderCount}):", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$${shift.currentCashSales ?: "0.00"}", fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
-                    }
+                    if (!isEmployee) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Ventas en efectivo (${shift.orderCount}):", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("$${shift.currentCashSales ?: "0.00"}", fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
+                        }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Total esperado en caja:", fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Total esperado en caja:", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = "$${shift.expectedCash ?: shift.openingBalance}",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = KomandaTokens.AccentTertiary
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Datos de facturación:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = "🔒 Restringido (Perfil empleado)",
+                                fontWeight = FontWeight.SemiBold,
+                                color = Zinc400,
+                                fontSize = 13.sp
+                            )
+                        }
                         Text(
-                            text = "$${shift.expectedCash ?: shift.openingBalance}",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = KomandaTokens.AccentTertiary
+                            text = "Por política de control, contá el efectivo físico disponible en el cajón e ingresalo a continuación.",
+                            color = Zinc400,
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -111,7 +136,7 @@ fun EspressoCloseShiftDialog(
                 OutlinedTextField(
                     value = closingBalance,
                     onValueChange = { closingBalance = it },
-                    label = { Text("Efectivo contado real en caja ($)") },
+                    label = { Text(if (isEmployee) "Efectivo físico contado ($)" else "Efectivo contado real en caja ($)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

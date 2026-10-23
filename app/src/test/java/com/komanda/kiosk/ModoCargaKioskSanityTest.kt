@@ -52,5 +52,27 @@ class ModoCargaKioskSanityTest {
             "Dialog must allow toggling to existing categories",
             content.contains("Elegir categoría existente")
         )
+
+        assertTrue(
+            "Dialog must declare errorMessage parameter for error feedback",
+            content.contains("errorMessage: String? = null")
+        )
+    }
+
+    @Test
+    fun kioskScreen_guardsQuickAddDismissalAndExposesError() {
+        val projectDir = File(System.getProperty("user.dir") ?: ".")
+        val screenFile = File(projectDir, "src/main/java/com/komanda/kiosk/ui/EspressoKioskScreen.kt")
+        assertTrue("EspressoKioskScreen.kt should exist", screenFile.exists())
+        val content = screenFile.readText()
+
+        assertTrue(
+            "Screen must track quickAddError state",
+            content.contains("quickAddError")
+        )
+        assertTrue(
+            "Screen must condition dismissPendingLookup on quickCreateItem success",
+            content.contains("if (success) {") && content.contains("espressoManager.dismissPendingLookup()")
+        )
     }
 }
