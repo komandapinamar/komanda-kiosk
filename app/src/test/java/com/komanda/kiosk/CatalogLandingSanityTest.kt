@@ -8,7 +8,7 @@ import java.io.File
 class CatalogLandingSanityTest {
 
     @Test
-    fun kioskScreen_defaultsToCatalogListMode() {
+    fun kioskScreen_defaultsToScannerMode() {
         val projectDir = File(System.getProperty("user.dir") ?: ".")
         val screenFile = File(projectDir, "src/main/java/com/komanda/kiosk/ui/EspressoKioskScreen.kt")
 
@@ -16,8 +16,8 @@ class CatalogLandingSanityTest {
         val content = screenFile.readText()
 
         assertTrue(
-            "viewMode should default to KioskViewMode.LIST",
-            content.contains("var viewMode by remember { mutableStateOf(KioskViewMode.LIST) }")
+            "viewMode should default to KioskViewMode.SCANNER",
+            content.contains("var viewMode by remember { mutableStateOf(KioskViewMode.SCANNER) }")
         )
 
         assertFalse(
@@ -26,8 +26,8 @@ class CatalogLandingSanityTest {
         )
 
         assertTrue(
-            "dismissApprovedPayment should return to KioskViewMode.LIST",
-            content.contains("viewMode = KioskViewMode.LIST")
+            "dismissApprovedPayment should return to KioskViewMode.SCANNER",
+            content.contains("viewMode = KioskViewMode.SCANNER")
         )
     }
 }

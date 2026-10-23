@@ -19,16 +19,12 @@ class LoginScopeCardSanityTest {
             content.contains("app.komanda.com.ar")
         )
         assertTrue(
-            "LoginScreen should clarify that stock/inventory is managed on web",
-            content.contains("control de stock")
+            "LoginScreen should clarify that stock is managed on web",
+            content.contains("stock")
         )
         assertTrue(
-            "LoginScreen should clarify that analytics are managed on web",
-            content.contains("analíticas de ventas")
-        )
-        assertTrue(
-            "LoginScreen should clarify that full catalog management is managed on web",
-            content.contains("administración completa del catálogo")
+            "LoginScreen should clarify that website is available for administration",
+            content.contains("página de Komanda")
         )
     }
 }

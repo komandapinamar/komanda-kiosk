@@ -55,6 +55,7 @@ import com.komanda.kiosk.ui.theme.Zinc950
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EspressoStaffAuthDialog(
+    scannedBarcode: String? = null,
     isLockedOut: Boolean,
     remainingLockoutSeconds: Int,
     isLoading: Boolean,
@@ -71,25 +72,25 @@ fun EspressoStaffAuthDialog(
             shape = RoundedCornerShape(24.dp),
             color = Zinc900,
             tonalElevation = 8.dp,
-            modifier = Modifier.width(440.dp)
+            modifier = Modifier.width(480.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(28.dp)
+                    .padding(32.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
                     shape = CircleShape,
                     color = KomandaTokens.AccentTertiary.copy(alpha = 0.15f),
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(64.dp)
                 ) {
                     androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
                             tint = KomandaTokens.AccentTertiary,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -100,16 +101,26 @@ fun EspressoStaffAuthDialog(
                     text = "Acceso Personal",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
+                        fontSize = 24.sp
                     ),
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                if (!scannedBarcode.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Código escaneado: $scannedBarcode",
+                        color = KomandaTokens.AccentTertiary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "Ingresá tus credenciales de empleado o admin para autorizar la carga del producto.",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Ingresá tus credenciales de empleado o admin para autorizar la carga rápida del producto.",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Zinc400,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
