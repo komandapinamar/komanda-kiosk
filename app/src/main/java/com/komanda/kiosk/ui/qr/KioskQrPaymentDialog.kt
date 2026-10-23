@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
 import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -82,7 +82,7 @@ fun KioskQrPaymentDialog(
     }
 
     val isUrgent = secondsRemaining <= 30
-    val timerColor = if (isUrgent) Color(0xFFEF4444) else Amber400
+    val timerColor = if (isUrgent) Color(0xFFEF4444) else KomandaTokens.AccentTertiary
     val progress = (secondsRemaining.toFloat() / session.timeoutSeconds.toFloat()).coerceIn(0f, 1f)
     val minutes = secondsRemaining / 60
     val seconds = secondsRemaining % 60
@@ -102,8 +102,8 @@ fun KioskQrPaymentDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "✦ PAGO CON QR",
-                    color = Amber400,
+                    text = "PAGO CON QR",
+                    color = KomandaTokens.AccentTertiary,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -124,7 +124,7 @@ fun KioskQrPaymentDialog(
                     text = "Total: $${session.total} ${session.currency}",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Amber400
+                    color = KomandaTokens.AccentTertiary
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))

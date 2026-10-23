@@ -46,7 +46,7 @@ class FakeEspressoApi : KomandaApi {
             price = "2000.00",
             categoryId = "cat-2",
             isGeneric = true,
-            genericIcon = "☕",
+            genericIcon = "Cafe",
             status = "active"
         )
     )

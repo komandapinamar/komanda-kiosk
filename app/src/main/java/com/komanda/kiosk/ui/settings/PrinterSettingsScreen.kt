@@ -62,7 +62,7 @@ import com.komanda.kiosk.hardware.printing.PrinterConfig
 import com.komanda.kiosk.hardware.printing.PrinterRole
 import com.komanda.kiosk.hardware.printing.PrinterRouter
 import com.komanda.kiosk.hardware.printing.PrinterType
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Emerald600
 import com.komanda.kiosk.ui.theme.Red400
 import com.komanda.kiosk.ui.theme.Zinc100
@@ -109,8 +109,8 @@ fun PrinterSettingsScreen(
                     Button(
                         onClick = { showAddNetworkDialog = true },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Amber400,
-                            contentColor = Zinc950
+                            containerColor = KomandaTokens.AccentTertiary,
+                            contentColor = KomandaTokens.AccentPrimary
                         ),
                         shape = RoundedCornerShape(2.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
@@ -289,7 +289,7 @@ private fun PrinterConfigCard(
 private fun TypeBadge(type: PrinterType) {
     val (label, bg, fg) = when (type) {
         PrinterType.USB_ESC_POS -> Triple("USB", Zinc800, Zinc100)
-        PrinterType.NETWORK_ESC_POS -> Triple("RED TCP", Zinc800, Amber400)
+        PrinterType.NETWORK_ESC_POS -> Triple("RED TCP", Zinc800, KomandaTokens.AccentTertiary)
         PrinterType.BLUETOOTH_ESC_POS -> Triple("BLUETOOTH", Zinc800, Emerald600)
         PrinterType.TELPO_INTERNAL -> Triple("TELPO", Zinc800, Zinc100)
     }
@@ -328,7 +328,7 @@ private fun RoleDropdown(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Zinc950,
                 unfocusedContainerColor = Zinc950,
-                focusedBorderColor = Amber400,
+                focusedBorderColor = KomandaTokens.AccentTertiary,
                 unfocusedBorderColor = Zinc800,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
@@ -384,7 +384,7 @@ private fun TriggerDropdown(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Zinc950,
                 unfocusedContainerColor = Zinc950,
-                focusedBorderColor = Amber400,
+                focusedBorderColor = KomandaTokens.AccentTertiary,
                 unfocusedBorderColor = Zinc800,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
@@ -473,7 +473,7 @@ private fun AddNetworkPrinterDialog(
                         onAdd(name, host.trim(), portInt)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Zinc950)
+                colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
             ) {
                 Text("Guardar")
             }

@@ -29,6 +29,7 @@ data class MobileTenantDto(
     val slug: String,
     val status: String,
     val role: String,
+    val preset: String? = "express_retail",
     val primaryLocation: MobileLocationDto? = null
 )
 

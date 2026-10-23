@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
 
@@ -54,7 +54,7 @@ fun EspressoOpenShiftDialog(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "💰 Abrir caja",
+                    text = "Abrir caja",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -91,13 +91,13 @@ fun EspressoOpenShiftDialog(
                             val clean = if (amount.isBlank()) "0.00" else amount
                             onConfirm(clean)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Zinc950),
+                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("✅ Abrir caja y comenzar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Abrir caja y comenzar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
 
                     OutlinedButton(

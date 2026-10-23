@@ -30,9 +30,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -67,7 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komanda.kiosk.core.network.CatalogItemDto
 import com.komanda.kiosk.ui.qr.KioskQrPaymentDialog
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc700
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
@@ -252,8 +254,8 @@ fun EspressoKioskScreen(
                 ) {
                     Column {
                         Text(
-                            text = "✦ Kiosco Digital",
-                            color = Amber400,
+                            text = "Komanda Kiosk",
+                            color = KomandaTokens.AccentTertiary,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -272,8 +274,8 @@ fun EspressoKioskScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = if (activeShift != null) Color(0xFF10B981).copy(alpha = 0.2f) else Amber400.copy(alpha = 0.2f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeShift != null) Color(0xFF10B981) else Amber400),
+                            color = if (activeShift != null) Color(0xFF10B981).copy(alpha = 0.2f) else KomandaTokens.AccentTertiary.copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (activeShift != null) Color(0xFF10B981) else KomandaTokens.AccentTertiary),
                             modifier = Modifier.clickable {
                                 if (activeShift == null) {
                                     showOpenShiftDialog = true
@@ -284,8 +286,8 @@ fun EspressoKioskScreen(
                             }
                         ) {
                             Text(
-                                text = if (activeShift != null) "💰 Caja: $${activeShift?.expectedCash ?: activeShift?.openingBalance}" else "💰 Abrir caja",
-                                color = if (activeShift != null) Color(0xFF10B981) else Amber400,
+                                text = if (activeShift != null) "Caja: $${activeShift?.expectedCash ?: activeShift?.openingBalance}" else "Abrir caja",
+                                color = if (activeShift != null) Color(0xFF10B981) else KomandaTokens.AccentTertiary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
@@ -316,8 +318,8 @@ fun EspressoKioskScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Amber400.copy(alpha = 0.15f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Amber400.copy(alpha = 0.4f)),
+                        color = KomandaTokens.AccentTertiary.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -327,7 +329,7 @@ fun EspressoKioskScreen(
                         ) {
                             Text(
                                 text = statusMessage!!,
-                                color = Amber400,
+                                color = KomandaTokens.AccentTertiary,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium
                             )
@@ -335,7 +337,7 @@ fun EspressoKioskScreen(
                                 onClick = { espressoManager.clearStatusMessage() },
                                 modifier = Modifier.size(24.dp)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Amber400, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = KomandaTokens.AccentTertiary, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -375,7 +377,12 @@ fun EspressoKioskScreen(
                                     verticalArrangement = Arrangement.Center,
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("🔫", fontSize = 48.sp)
+                                    Icon(
+                                        imageVector = Icons.Default.QrCodeScanner,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = Color.White
+                                    )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "Escanear producto",
@@ -410,7 +417,12 @@ fun EspressoKioskScreen(
                                     verticalArrangement = Arrangement.Center,
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("🏪", fontSize = 48.sp)
+                                    Icon(
+                                        imageVector = Icons.Default.Storefront,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = Color.White
+                                    )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = "Elegir de la lista",
@@ -437,7 +449,7 @@ fun EspressoKioskScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "🔫 Escáner activo",
+                                text = "Escáner activo",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -466,11 +478,16 @@ fun EspressoKioskScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Zinc900)
-                                .border(2.dp, Amber400.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
+                                .border(2.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🔫", fontSize = 64.sp)
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color.White
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "Listo para escanear",
@@ -517,7 +534,7 @@ fun EspressoKioskScreen(
                                                 }
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Zinc950)
+                                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
                                     ) {
                                         Text("Ok")
                                     }
@@ -533,7 +550,7 @@ fun EspressoKioskScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "🏪 Catálogo de Productos",
+                                text = "Catálogo de Productos",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -543,7 +560,7 @@ fun EspressoKioskScreen(
                                     onClick = { viewMode = KioskViewMode.SCANNER },
                                     colors = ButtonDefaults.buttonColors(containerColor = Zinc900)
                                 ) {
-                                    Text("🔫 Modo Escáner")
+                                    Text("Modo Escáner")
                                 }
                                 Button(
                                     onClick = { viewMode = KioskViewMode.HUB },
@@ -567,8 +584,8 @@ fun EspressoKioskScreen(
                                     onClick = { espressoManager.selectCategory(null) },
                                     label = { Text("Todos") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Amber400,
-                                        selectedLabelColor = Zinc950
+                                        selectedContainerColor = KomandaTokens.AccentTertiary,
+                                        selectedLabelColor = KomandaTokens.AccentPrimary
                                     )
                                 )
                             }
@@ -578,8 +595,8 @@ fun EspressoKioskScreen(
                                     onClick = { espressoManager.selectCategory(cat.id) },
                                     label = { Text(cat.name) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Amber400,
-                                        selectedLabelColor = Zinc950
+                                        selectedContainerColor = KomandaTokens.AccentTertiary,
+                                        selectedLabelColor = KomandaTokens.AccentPrimary
                                     )
                                 )
                             }
@@ -627,7 +644,7 @@ fun EspressoKioskScreen(
                                                     text = item.genericIcon,
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Amber400
+                                                    color = KomandaTokens.AccentTertiary
                                                 )
                                                 Spacer(modifier = Modifier.height(4.dp))
                                             }
@@ -643,7 +660,7 @@ fun EspressoKioskScreen(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = "$${item.price}",
-                                                color = Amber400,
+                                                color = KomandaTokens.AccentTertiary,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 16.sp
                                             )
@@ -683,7 +700,7 @@ fun EspressoKioskScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito", tint = Amber400)
+                            Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito", tint = KomandaTokens.AccentTertiary)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Tu pedido",
@@ -710,7 +727,12 @@ fun EspressoKioskScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("🛒", fontSize = 48.sp)
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = Color.White.copy(alpha = 0.3f)
+                                )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = "El carrito está vacío",
@@ -750,7 +772,7 @@ fun EspressoKioskScreen(
                                         )
                                         Text(
                                             text = "$${String.format(java.util.Locale.US, "%.2f", line.lineTotal)}",
-                                            color = Amber400,
+                                            color = KomandaTokens.AccentTertiary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp
                                         )
@@ -808,7 +830,7 @@ fun EspressoKioskScreen(
                                     text = "$${String.format(java.util.Locale.US, "%.2f", espressoManager.totalAmount)}",
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Amber400
+                                    color = KomandaTokens.AccentTertiary
                                 )
                             }
 
@@ -821,8 +843,8 @@ fun EspressoKioskScreen(
                                     .fillMaxWidth()
                                     .height(48.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Amber400,
-                                    contentColor = Zinc950,
+                                    containerColor = KomandaTokens.AccentTertiary,
+                                    contentColor = KomandaTokens.AccentPrimary,
                                     disabledContainerColor = Zinc800,
                                     disabledContentColor = Color.White.copy(alpha = 0.3f)
                                 ),

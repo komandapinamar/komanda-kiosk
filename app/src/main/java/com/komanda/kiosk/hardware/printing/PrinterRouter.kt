@@ -2,7 +2,6 @@ package com.komanda.kiosk.hardware.printing
 
 import android.content.Context
 import android.util.Log
-import com.komanda.kiosk.core.model.TicketCustomer
 import com.komanda.kiosk.core.model.TicketItem
 import com.komanda.kiosk.core.model.TicketPayload
 import com.komanda.kiosk.core.model.TicketSummary
@@ -167,14 +166,13 @@ class PrinterRouter(
         val testPayload = TicketPayload(
             orderId = "test-check",
             purchaseNumber = "TEST",
-            source = "pos_test",
+            source = "kiosk_test",
             copies = 1,
-            tenant = "Komanda Demo",
-            customer = TicketCustomer(name = "Prueba de Impresión"),
+            tenant = "Komanda Kiosk",
             items = listOf(
                 TicketItem(
                     id = "test-1",
-                    name = "Ticket de Verificación",
+                    name = "Ticket de Verificación Kiosk",
                     quantity = 1,
                     unitPrice = 100.0,
                     lineTotal = 100.0
@@ -184,7 +182,11 @@ class PrinterRouter(
         )
 
         val driver = getDriverForConfig(config)
-        val bytes = EscPosTicketRenderer.renderTicket(testPayload, config.role)
+        val bytes = if (config.role == PrinterRole.KITCHEN) {
+            EscPosTicketRenderer.renderKitchenTicket(testPayload)
+        } else {
+            EscPosTicketRenderer.renderKioskTestTicket(testPayload)
+        }
         driver.printRaw(bytes)
     }
 

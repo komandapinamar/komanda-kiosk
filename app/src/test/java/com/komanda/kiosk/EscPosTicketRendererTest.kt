@@ -74,7 +74,7 @@ class EscPosTicketRendererTest {
     }
 
     @Test
-    fun `renderCounterTicket outputs commercial receipt with prices totals and ASCII art`() {
+    fun `renderCounterTicket outputs commercial receipt with prices and totals`() {
         val bytes = EscPosTicketRenderer.renderCounterTicket(samplePayload)
         val text = String(bytes, Charsets.ISO_8859_1)
 
@@ -90,9 +90,40 @@ class EscPosTicketRendererTest {
         assertTrue("Must include grand total", text.contains("Total: $9.500"))
         assertTrue("Must include payment status", text.contains("COBRAR EN CAJA"))
 
-        // ASCII art & branding
-        assertTrue("Must include ASCII art cloche/food emblem", text.contains(".------.") && text.contains("| ~~~~ |"))
-        assertTrue("Must include thank you message", text.contains("¡Gracias por tu compra!"))
+        // Branding
+        assertTrue("Must include thank you message", text.contains("¡Gracias por su compra!"))
+    }
+
+    @Test
+    fun `renderKioskTestTicket outputs clean totem diagnostic ticket`() {
+        val testPayload = TicketPayload(
+            orderId = "test-check",
+            purchaseNumber = "TEST",
+            source = "kiosk_test",
+            tenant = "Komanda Kiosk",
+            items = listOf(
+                TicketItem(
+                    id = "test-1",
+                    name = "Ticket de Verificación Kiosk",
+                    quantity = 1,
+                    unitPrice = 100.0,
+                    lineTotal = 100.0
+                )
+            ),
+            summary = TicketSummary(subtotal = 100.0, total = 100.0)
+        )
+
+        val bytes = EscPosTicketRenderer.renderKioskTestTicket(testPayload)
+        val text = String(bytes, Charsets.ISO_8859_1)
+
+        assertTrue("Must include KOMANDA header", text.contains("KOMANDA"))
+        assertTrue("Must include Kiosk tenant", text.contains("KOMANDA KIOSK"))
+        assertTrue("Must include test ticket subtitle", text.contains("TICKET DE PRUEBA KIOSK"))
+        assertTrue("Must include test product name", text.contains("1 x Ticket de Verificación Kiosk"))
+        assertTrue("Must include test total", text.contains("TOTAL TEST: $100"))
+        assertTrue("Must include test status", text.contains("ESTADO: IMPRESION DE PRUEBA OK"))
+        assertTrue("Must include totem mode", text.contains("AUTOSERVICIO / TOTEM KIOSK"))
+        assertTrue("Must include ready branding", text.contains("¡KOMANDA KIOSK LISTO!"))
     }
 
     @Test

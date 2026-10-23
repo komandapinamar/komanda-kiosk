@@ -30,7 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.CashShiftDto
-import com.komanda.kiosk.ui.theme.Amber400
+import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc800
 import com.komanda.kiosk.ui.theme.Zinc900
 import com.komanda.kiosk.ui.theme.Zinc950
@@ -58,7 +58,7 @@ fun EspressoCloseShiftDialog(
                     .fillMaxWidth()
             ) {
                 Text(
-                    text = "🔒 Cerrar caja y arqueo",
+                    text = "Cerrar caja y arqueo",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -87,7 +87,7 @@ fun EspressoCloseShiftDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Ventas en efectivo (${shift.orderCount}):", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$${shift.currentCashSales ?: "0.00"}", fontWeight = FontWeight.Bold, color = Amber400)
+                        Text("$${shift.currentCashSales ?: "0.00"}", fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -101,7 +101,7 @@ fun EspressoCloseShiftDialog(
                             text = "$${shift.expectedCash ?: shift.openingBalance}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Amber400
+                            color = KomandaTokens.AccentTertiary
                         )
                     }
                 }
@@ -143,7 +143,7 @@ fun EspressoCloseShiftDialog(
                                 onConfirm(closingBalance, notes.ifBlank { null })
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Zinc950),
+                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Confirmar cierre", fontWeight = FontWeight.Bold)
