@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.komanda.kiosk.core.network.CatalogItemDto
+import com.komanda.kiosk.ui.qr.KioskQrPaymentDialog
 import com.komanda.kiosk.ui.theme.Amber400
 import com.komanda.kiosk.ui.theme.Zinc700
 import com.komanda.kiosk.ui.theme.Zinc800
@@ -95,6 +96,8 @@ fun EspressoKioskScreen(
     val statusMessage by espressoManager.statusMessage.collectAsStateWithLifecycle()
     val pendingLookup by espressoManager.pendingLookup.collectAsStateWithLifecycle()
     val activeShift by espressoManager.activeShift.collectAsStateWithLifecycle()
+    val activeQrSession by espressoManager.activeQrSession.collectAsStateWithLifecycle()
+    val approvedPayment by espressoManager.approvedPayment.collectAsStateWithLifecycle()
 
     var viewMode by remember { mutableStateOf(KioskViewMode.HUB) }
     var showPinDialog by remember { mutableStateOf(false) }
@@ -115,10 +118,52 @@ fun EspressoKioskScreen(
             onSelectPaymentMethod = { method ->
                 showCheckoutDialog = false
                 coroutineScope.launch {
-                    espressoManager.checkout(method)
+                    if (method == "qr") {
+                        espressoManager.startQrPayment()
+                    } else {
+                        espressoManager.checkout(method)
+                    }
                 }
             },
             onDismiss = { showCheckoutDialog = false }
+        )
+    }
+
+    if (activeQrSession != null) {
+        KioskQrPaymentDialog(
+            session = activeQrSession!!,
+            onPollStatus = { attemptId ->
+                espressoManager.pollPaymentStatus(attemptId)
+            },
+            onApproved = { statusResponse ->
+                espressoManager.onPaymentApproved(statusResponse)
+            },
+            onCancel = { attemptId ->
+                coroutineScope.launch {
+                    espressoManager.cancelQrPayment(attemptId)
+                }
+            },
+            onTimeout = { attemptId ->
+                coroutineScope.launch {
+                    espressoManager.cancelQrPayment(attemptId)
+                }
+            },
+            onDismiss = {
+                espressoManager.dismissQrPayment()
+            }
+        )
+    }
+
+    if (approvedPayment != null) {
+        val payment = approvedPayment!!
+        KioskSuccessScreen(
+            total = payment.total ?: "0.00",
+            purchaseNumber = payment.purchaseNumber,
+            paymentMethod = "Mercado Pago",
+            onDismiss = {
+                espressoManager.dismissApprovedPayment()
+                viewMode = KioskViewMode.HUB
+            }
         )
     }
 

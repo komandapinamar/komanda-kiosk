@@ -14,19 +14,28 @@ import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
 import com.komanda.kiosk.core.network.DirectOrderCustomerRequest
 import com.komanda.kiosk.core.network.DirectOrderItemRequest
+import com.komanda.kiosk.core.network.KioskPaymentCustomerRequest
+import com.komanda.kiosk.core.network.KioskPaymentItemRequest
+import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
+import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
+import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.hardware.printing.PrinterRouter
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class EspressoManager(
     val tenantId: String,
     val tenantName: String,
     private val api: KomandaApi,
-    private val printerRouter: PrinterRouter? = null
+    private val printerRouter: PrinterRouter? = null,
+    private val attemptStore: CheckoutAttemptStore? = null
 ) {
     private val tag = "EspressoManager"
 
@@ -56,6 +65,12 @@ class EspressoManager(
 
     private val _pendingLookup = MutableStateFlow<Pair<String, BarcodeSuggestionDto?>?>(null)
     val pendingLookup: StateFlow<Pair<String, BarcodeSuggestionDto?>?> = _pendingLookup.asStateFlow()
+
+    private val _activeQrSession = MutableStateFlow<KioskPaymentSessionResponse?>(null)
+    val activeQrSession: StateFlow<KioskPaymentSessionResponse?> = _activeQrSession.asStateFlow()
+
+    private val _approvedPayment = MutableStateFlow<KioskPaymentStatusResponse?>(null)
+    val approvedPayment: StateFlow<KioskPaymentStatusResponse?> = _approvedPayment.asStateFlow()
 
     val totalAmount: Double
         get() = _cart.value.sumOf { it.lineTotal }
@@ -263,13 +278,17 @@ class EspressoManager(
     }
 
     suspend fun checkout(
-        paymentMethod: String, // "cash", "qr", "card"
+        paymentMethod: String, // "cash", "qr" (card deferred)
         customerName: String = "Cliente Autoservicio"
     ): Boolean {
         if (_cart.value.isEmpty()) return false
         _isLoading.value = true
+        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, paymentMethod, customerName)
+        val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
+        val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
+
         try {
-            val idempotencyKey = UUID.randomUUID().toString()
             val request = CreateDirectOrderRequest(
                 items = _cart.value.map { line ->
                     DirectOrderItemRequest(
@@ -284,6 +303,10 @@ class EspressoManager(
             val res = api.createDirectOrder(tenantId, idempotencyKey, request)
             if (res.isSuccessful && res.body() != null) {
                 val order = res.body()!!
+                attempt?.let {
+                    attemptStore?.markAttemptConfirmed(tenantId, it, order.id)
+                    attemptStore?.clearConfirmedAttempt(tenantId)
+                }
 
                 val purchaseNum = order.purchaseNumber.toString()
 
@@ -317,14 +340,127 @@ class EspressoManager(
                 }
                 return true
             } else {
+                attempt?.let { attemptStore?.markAttemptUnknown(tenantId, it) }
                 _statusMessage.value = "Error al procesar el pedido."
             }
         } catch (e: Exception) {
             Log.e(tag, "Checkout failed", e)
+            attempt?.let { attemptStore?.markAttemptUnknown(tenantId, it) }
             _statusMessage.value = "Error de red al procesar el pedido."
         } finally {
             _isLoading.value = false
         }
         return false
+    }
+
+    suspend fun startQrPayment(customerName: String = "Cliente Autoservicio"): KioskPaymentSessionResponse? {
+        if (_cart.value.isEmpty()) return null
+        _isLoading.value = true
+        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, "qr", customerName)
+        val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
+        val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
+
+        try {
+            val request = KioskPaymentSessionRequest(
+                items = _cart.value.map { line ->
+                    KioskPaymentItemRequest(
+                        catalogItemId = line.item.id,
+                        quantity = line.quantity
+                    )
+                },
+                customer = KioskPaymentCustomerRequest(name = customerName)
+            )
+
+            val res = api.createKioskPaymentSession(tenantId, idempotencyKey, request)
+            if (res.isSuccessful && res.body() != null) {
+                val session = res.body()!!
+                _activeQrSession.value = session
+                return session
+            } else {
+                if (res.code() == 422) {
+                    _statusMessage.value = "Mercado Pago no está configurado en este local."
+                } else {
+                    _statusMessage.value = "Error al iniciar sesión de pago con QR."
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Start QR payment failed", e)
+            _statusMessage.value = "Error de red al conectar con Mercado Pago."
+        } finally {
+            _isLoading.value = false
+        }
+        return null
+    }
+
+    suspend fun cancelQrPayment(attemptId: String) {
+        _activeQrSession.value = null
+        try {
+            val idempotencyKey = UUID.randomUUID().toString()
+            api.cancelKioskPaymentAttempt(tenantId, attemptId, idempotencyKey)
+            _statusMessage.value = "Pago cancelado. Podés continuar con tu compra."
+        } catch (e: Exception) {
+            Log.e(tag, "Cancel QR payment failed", e)
+        }
+    }
+
+    suspend fun pollPaymentStatus(attemptId: String): KioskPaymentStatusResponse? {
+        try {
+            val res = api.getKioskPaymentStatus(tenantId, attemptId)
+            if (res.isSuccessful && res.body() != null) {
+                return res.body()
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Polling payment status failed", e)
+        }
+        return null
+    }
+
+    fun onPaymentApproved(statusResponse: KioskPaymentStatusResponse) {
+        val itemsSnapshot = _cart.value.map { line ->
+            TicketItem(
+                id = line.item.id,
+                name = line.item.name,
+                quantity = line.quantity,
+                unitPrice = line.item.price.toDoubleOrNull() ?: 0.0,
+                lineTotal = line.lineTotal
+            )
+        }
+        val currentTotal = totalAmount
+        val purchaseNum = statusResponse.purchaseNumber ?: ""
+
+        val payload = TicketPayload(
+            orderId = statusResponse.orderId ?: UUID.randomUUID().toString(),
+            purchaseNumber = purchaseNum,
+            tenant = tenantName,
+            items = itemsSnapshot,
+            summary = TicketSummary(
+                subtotal = currentTotal,
+                total = currentTotal
+            )
+        )
+
+        _activeQrSession.value = null
+        _cart.value = emptyList()
+        _approvedPayment.value = statusResponse
+        _statusMessage.value = "¡Cobro confirmado! Ticket #$purchaseNum"
+
+        printerRouter?.let { router ->
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    router.printKioskQrApprovedTicket(payload, statusResponse.paymentId)
+                } catch (e: Exception) {
+                    Log.e(tag, "Failed to print approved QR ticket", e)
+                }
+            }
+        }
+    }
+
+    fun dismissApprovedPayment() {
+        _approvedPayment.value = null
+    }
+
+    fun dismissQrPayment() {
+        _activeQrSession.value = null
     }
 }

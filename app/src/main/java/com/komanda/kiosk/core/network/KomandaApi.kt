@@ -77,4 +77,26 @@ interface KomandaApi {
         @Path("shiftId") shiftId: String,
         @Body body: CloseCashShiftRequest
     ): Response<CashShiftDto>
+
+    @Headers("Content-Type: application/json")
+    @POST("/api/v1/tenants/{tenantId}/kiosk/payment-sessions")
+    suspend fun createKioskPaymentSession(
+        @Path("tenantId") tenantId: String,
+        @Header("idempotency-key") idempotencyKey: String,
+        @Body body: KioskPaymentSessionRequest
+    ): Response<KioskPaymentSessionResponse>
+
+    @Headers("Content-Type: application/json")
+    @POST("/api/v1/tenants/{tenantId}/kiosk/payment-attempts/{attemptId}/cancel")
+    suspend fun cancelKioskPaymentAttempt(
+        @Path("tenantId") tenantId: String,
+        @Path("attemptId") attemptId: String,
+        @Header("idempotency-key") idempotencyKey: String
+    ): Response<KioskPaymentCancelResponse>
+
+    @GET("/api/v1/tenants/{tenantId}/kiosk/payment-attempts/{attemptId}/status")
+    suspend fun getKioskPaymentStatus(
+        @Path("tenantId") tenantId: String,
+        @Path("attemptId") attemptId: String
+    ): Response<KioskPaymentStatusResponse>
 }

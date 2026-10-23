@@ -142,6 +142,25 @@ class PrinterRouter(
     }
 
     /**
+     * Prints a Kiosk QR approved payment ticket with gateway transaction reference.
+     */
+    suspend fun printKioskQrApprovedTicket(
+        payload: TicketPayload,
+        paymentId: String? = null
+    ): Map<String, PrintResult> = withContext(Dispatchers.IO) {
+        val targets = printers.value.filter { it.role != PrinterRole.DISABLED }
+        val results = mutableMapOf<String, PrintResult>()
+        val bytes = EscPosTicketRenderer.renderKioskQrApprovedTicket(payload, paymentId)
+        for (config in targets) {
+            val driver = getDriverForConfig(config)
+            val res = driver.printRaw(bytes)
+            results[config.id] = res
+            Log.i(tag, "Kiosk QR approved ticket printed on '${config.name}': $res")
+        }
+        results
+    }
+
+    /**
      * Prints a diagnostic test ticket on a given printer profile.
      */
     suspend fun printTestTicket(config: PrinterConfig): PrintResult = withContext(Dispatchers.IO) {

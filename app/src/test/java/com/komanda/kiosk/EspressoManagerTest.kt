@@ -10,6 +10,10 @@ import com.komanda.kiosk.core.network.CatalogResponse
 import com.komanda.kiosk.core.network.CloseCashShiftRequest
 import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
+import com.komanda.kiosk.core.network.KioskPaymentCancelResponse
+import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
+import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
+import com.komanda.kiosk.core.network.KioskPaymentStatusResponse
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.MobileContextResponse
 import com.komanda.kiosk.core.network.MobileLoginRequest
@@ -26,6 +30,7 @@ import org.junit.Test
 import retrofit2.Response
 
 class FakeEspressoApi : KomandaApi {
+    var lastDirectOrderRequest: CreateDirectOrderRequest? = null
     val items = mutableListOf(
         CatalogItemDto(
             id = "item-1",
@@ -60,6 +65,7 @@ class FakeEspressoApi : KomandaApi {
         idempotencyKey: String,
         body: CreateDirectOrderRequest
     ): Response<OrderDto> {
+        lastDirectOrderRequest = body
         val order = OrderDto(
             id = "order-101",
             tenantId = tenantId,
@@ -153,6 +159,56 @@ class FakeEspressoApi : KomandaApi {
         )
         currentShift = null
         return Response.success(shift)
+    }
+
+    var lastPaymentSessionRequest: KioskPaymentSessionRequest? = null
+    var lastCancelledAttemptId: String? = null
+
+    override suspend fun createKioskPaymentSession(
+        tenantId: String,
+        idempotencyKey: String,
+        body: KioskPaymentSessionRequest
+    ): Response<KioskPaymentSessionResponse> {
+        lastPaymentSessionRequest = body
+        return Response.success(
+            KioskPaymentSessionResponse(
+                paymentAttemptId = "att-123",
+                cartId = "cart-123",
+                total = "3500.00",
+                currency = "ARS",
+                qrData = "https://mercadopago.com/init_point_mock",
+                expiresAt = "2026-09-23T16:02:00.000Z",
+                timeoutSeconds = 120
+            )
+        )
+    }
+
+    override suspend fun cancelKioskPaymentAttempt(
+        tenantId: String,
+        attemptId: String,
+        idempotencyKey: String
+    ): Response<KioskPaymentCancelResponse> {
+        lastCancelledAttemptId = attemptId
+        return Response.success(
+            KioskPaymentCancelResponse(
+                status = "cancelled",
+                cancelledAt = "2026-09-23T16:01:00.000Z"
+            )
+        )
+    }
+
+    var mockPaymentStatusResponse: KioskPaymentStatusResponse? = null
+
+    override suspend fun getKioskPaymentStatus(
+        tenantId: String,
+        attemptId: String
+    ): Response<KioskPaymentStatusResponse> {
+        return Response.success(
+            mockPaymentStatusResponse ?: KioskPaymentStatusResponse(
+                status = "pending",
+                secondsRemaining = 90
+            )
+        )
     }
 }
 
@@ -259,6 +315,104 @@ class EspressoManagerTest {
 
         assertTrue(success)
         assertEquals(0, manager.cart.value.size)
+        assertEquals("Pago en efectivo en mostrador", api.lastDirectOrderRequest?.notes)
+        assertTrue(manager.statusMessage.value?.contains("Acercate a caja a abonar en efectivo") == true)
+    }
+
+    @Test
+    fun checkout_qrPaymentMethod_clearsCartAndCallsApi() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+
+        val success = manager.checkout(paymentMethod = "qr")
+
+        assertTrue(success)
+        assertEquals(0, manager.cart.value.size)
+        assertNull(api.lastDirectOrderRequest?.notes)
+        assertTrue(manager.statusMessage.value?.contains("¡Cobro confirmado!") == true)
+    }
+
+    @Test
+    fun startQrPayment_createsSessionAndUpdatesActiveQrSession() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+
+        val session = manager.startQrPayment()
+
+        assertNotNull(session)
+        assertEquals("att-123", session?.paymentAttemptId)
+        assertEquals(120, session?.timeoutSeconds)
+        assertEquals(session, manager.activeQrSession.value)
+        assertEquals(1, api.lastPaymentSessionRequest?.items?.size)
+        // Cart must remain intact while QR is displaying
+        assertEquals(1, manager.cart.value.size)
+    }
+
+    @Test
+    fun cancelQrPayment_callsApiAndClearsActiveQrSessionPreservingCart() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+
+        manager.startQrPayment()
+        assertNotNull(manager.activeQrSession.value)
+
+        manager.cancelQrPayment("att-123")
+
+        assertEquals("att-123", api.lastCancelledAttemptId)
+        assertNull(manager.activeQrSession.value)
+        // Cart must be preserved after cancellation
+        assertEquals(1, manager.cart.value.size)
+        assertTrue(manager.statusMessage.value?.contains("cancelado") == true)
+    }
+
+    @Test
+    fun pollPaymentStatus_returnsCurrentStatus() = runTest {
+        val api = FakeEspressoApi()
+        api.mockPaymentStatusResponse = KioskPaymentStatusResponse(
+            status = "pending",
+            secondsRemaining = 80
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        val status = manager.pollPaymentStatus("att-123")
+
+        assertNotNull(status)
+        assertEquals("pending", status?.status)
+        assertEquals(80, status?.secondsRemaining)
+    }
+
+    @Test
+    fun onPaymentApproved_clearsCartAndQrSessionSetsApprovedPayment() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.onBarcodeScanned("7790895000997")
+        manager.startQrPayment()
+
+        val approvedStatus = KioskPaymentStatusResponse(
+            status = "approved",
+            orderId = "ord-1",
+            purchaseNumber = "1042",
+            total = "1500.00",
+            paymentId = "mp-99"
+        )
+
+        manager.onPaymentApproved(approvedStatus)
+
+        assertEquals(0, manager.cart.value.size)
+        assertNull(manager.activeQrSession.value)
+        assertEquals("approved", manager.approvedPayment.value?.status)
+        assertEquals("1042", manager.approvedPayment.value?.purchaseNumber)
+        assertTrue(manager.statusMessage.value?.contains("Ticket #1042") == true)
+
+        manager.dismissApprovedPayment()
+        assertNull(manager.approvedPayment.value)
     }
 
     @Test

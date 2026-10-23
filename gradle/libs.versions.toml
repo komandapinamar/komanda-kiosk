@@ -44,6 +44,7 @@ datastorePreferences = "1.1.7"
 securityCrypto = "1.1.0-alpha06"
 material = "1.4.+"
 escposPrinter = "3.3.0"
+zxing = "3.5.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -98,6 +99,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 escpos-thermalprinter = { module = "com.github.DantSu:ESCPOS-ThermalPrinter-Android", version.ref = "escposPrinter" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
