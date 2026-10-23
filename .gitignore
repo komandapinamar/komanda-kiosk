@@ -9,3 +9,8 @@ local.properties
 .externalNativeBuild
 .cxx
 
+# Keystores & credentials
+*.jks
+*.keystore
+keystore.properties
+
