@@ -22,7 +22,8 @@ data class CreateDirectOrderRequest(
     val customer: DirectOrderCustomerRequest,
     val notes: String? = null,
     val tender: String? = null,
-    val paymentStatus: String? = null
+    val paymentStatus: String? = null,
+    val discountCode: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -55,7 +56,9 @@ data class OrderDto(
 data class CatalogCategoryDto(
     val id: String,
     val name: String,
-    val description: String? = null
+    val description: String? = null,
+    val status: String = "active",
+    val version: Int = 1
 )
 
 @JsonClass(generateAdapter = true)
@@ -70,14 +73,15 @@ data class CatalogItemDto(
     val genericIcon: String? = null,
     val trackStock: Boolean = false,
     val stockQuantity: Int = 0,
-    val status: String = "active"
+    val status: String = "active",
+    val version: Int = 1
 )
 
 @JsonClass(generateAdapter = true)
 data class CreateCategoryRequest(
     val name: String,
     val description: String? = null,
-    val status: String = "active"
+    val status: String = "draft"
 )
 
 @JsonClass(generateAdapter = true)
@@ -91,7 +95,19 @@ data class CreateCatalogItemRequest(
     val genericIcon: String? = null,
     val trackStock: Boolean = false,
     val stockQuantity: Int = 0,
-    val status: String = "active"
+    val status: String = "draft"
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateCatalogItemRequest(
+    val status: String? = null,
+    val version: Int? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateCatalogCategoryRequest(
+    val status: String? = null,
+    val version: Int? = null
 )
 
 @JsonClass(generateAdapter = true)

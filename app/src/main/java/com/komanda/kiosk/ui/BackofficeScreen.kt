@@ -20,9 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PointOfSale
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,8 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.komanda.kiosk.hardware.printing.PrinterRouter
-import com.komanda.kiosk.ui.settings.PrinterSettingsContent
 import com.komanda.kiosk.ui.theme.Emerald600
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc300
@@ -68,14 +66,13 @@ import kotlinx.coroutines.launch
 
 enum class BackofficeTab {
     CAJA,
-    IMPRESORAS
+    PRODUCTOS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BackofficeScreen(
     espressoManager: EspressoManager,
-    printerRouter: PrinterRouter,
     onBackToKiosk: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -84,12 +81,17 @@ fun BackofficeScreen(
     val activeShift by espressoManager.activeShift.collectAsStateWithLifecycle()
     val isLoading by espressoManager.isLoading.collectAsStateWithLifecycle()
     val statusMessage by espressoManager.statusMessage.collectAsStateWithLifecycle()
+    val analytics by espressoManager.analytics.collectAsStateWithLifecycle()
+    val analyticsPreset by espressoManager.analyticsPreset.collectAsStateWithLifecycle()
+    val isAnalyticsLoading by espressoManager.isAnalyticsLoading.collectAsStateWithLifecycle()
+    val analyticsError by espressoManager.analyticsError.collectAsStateWithLifecycle()
 
     var showOpenShiftDialog by remember { mutableStateOf(false) }
     var showCloseShiftDialog by remember { mutableStateOf(false) }
 
     val role = activeStaffSession?.role ?: "employee"
     val isEmployee = role == "employee"
+    val isOwner = role == "owner"
     val isPrivileged = role == "admin" || role == "owner"
 
     BackHandler {
@@ -98,6 +100,12 @@ fun BackofficeScreen(
 
     LaunchedEffect(Unit) {
         espressoManager.loadCashShift()
+    }
+
+    LaunchedEffect(selectedTab, isOwner) {
+        if (selectedTab == BackofficeTab.CAJA && isOwner) {
+            espressoManager.loadAnalytics()
+        }
     }
 
     if (showOpenShiftDialog) {
@@ -217,10 +225,10 @@ fun BackofficeScreen(
                     unselectedContentColor = Zinc400
                 )
                 Tab(
-                    selected = selectedTab == BackofficeTab.IMPRESORAS,
-                    onClick = { selectedTab = BackofficeTab.IMPRESORAS },
-                    text = { Text("Configuración de Impresoras", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
-                    icon = { Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    selected = selectedTab == BackofficeTab.PRODUCTOS,
+                    onClick = { selectedTab = BackofficeTab.PRODUCTOS },
+                    text = { Text("Productos", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+                    icon = { Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     selectedContentColor = KomandaTokens.AccentTertiary,
                     unselectedContentColor = Zinc400
                 )
@@ -247,18 +255,30 @@ fun BackofficeScreen(
                     BackofficeCashView(
                         activeShift = activeShift,
                         isEmployee = isEmployee,
+                        isOwner = isOwner,
                         isLoading = isLoading,
+                        analytics = analytics,
+                        analyticsPreset = analyticsPreset,
+                        isAnalyticsLoading = isAnalyticsLoading,
+                        analyticsError = analyticsError,
                         onOpenShift = { showOpenShiftDialog = true },
-                        onCloseShift = { showCloseShiftDialog = true }
+                        onCloseShift = { showCloseShiftDialog = true },
+                        onAnalyticsPresetChange = { preset ->
+                            coroutineScope.launch {
+                                espressoManager.loadAnalytics(preset)
+                            }
+                        },
+                        onRefreshAnalytics = {
+                            coroutineScope.launch {
+                                espressoManager.loadAnalytics(analyticsPreset)
+                            }
+                        }
                     )
                 }
-                BackofficeTab.IMPRESORAS -> {
-                    PrinterSettingsContent(
-                        router = printerRouter,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        showHeaderAction = true
+                BackofficeTab.PRODUCTOS -> {
+                    BackofficeProductsView(
+                        espressoManager = espressoManager,
+                        isOwner = isOwner
                     )
                 }
             }
@@ -270,9 +290,16 @@ fun BackofficeScreen(
 private fun BackofficeCashView(
     activeShift: com.komanda.kiosk.core.network.CashShiftDto?,
     isEmployee: Boolean,
+    isOwner: Boolean,
     isLoading: Boolean,
+    analytics: com.komanda.kiosk.core.network.DashboardAnalyticsDto?,
+    analyticsPreset: AnalyticsRangePreset,
+    isAnalyticsLoading: Boolean,
+    analyticsError: String?,
     onOpenShift: () -> Unit,
-    onCloseShift: () -> Unit
+    onCloseShift: () -> Unit,
+    onAnalyticsPresetChange: (AnalyticsRangePreset) -> Unit,
+    onRefreshAnalytics: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -501,6 +528,37 @@ private fun BackofficeCashView(
                             Text("Abrir Turno de Caja", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
                     }
+                }
+            }
+        }
+
+        if (isOwner) {
+            BackofficeAnalyticsSection(
+                analytics = analytics,
+                preset = analyticsPreset,
+                isLoading = isAnalyticsLoading,
+                error = analyticsError,
+                onPresetChange = onAnalyticsPresetChange,
+                onRefresh = onRefreshAnalytics
+            )
+        } else if (isEmployee) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Zinc900,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = Zinc400, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Las analíticas del negocio están disponibles solo para el Propietario.",
+                        fontSize = 13.sp,
+                        color = Zinc400
+                    )
                 }
             }
         }

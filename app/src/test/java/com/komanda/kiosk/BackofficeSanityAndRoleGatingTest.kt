@@ -60,9 +60,13 @@ class BackofficeSanityAndRoleGatingTest {
 
         // Tabs
         assertTrue("BackofficeScreen must declare CAJA tab", content.contains("BackofficeTab.CAJA"))
-        assertTrue("BackofficeScreen must declare IMPRESORAS tab", content.contains("BackofficeTab.IMPRESORAS"))
+        assertTrue("BackofficeScreen must declare PRODUCTOS tab", content.contains("BackofficeTab.PRODUCTOS"))
         assertTrue("BackofficeScreen must declare Control de Caja tab label", content.contains("Control de Caja"))
-        assertTrue("BackofficeScreen must declare Configuración de Impresoras tab label", content.contains("Configuración de Impresoras"))
+        assertTrue("BackofficeScreen must declare Productos tab label", content.contains("Productos"))
+        assertFalse(
+            "BackofficeScreen must no longer declare printer configuration tab",
+            content.contains("BackofficeTab.IMPRESORAS")
+        )
 
         // Role-based gating
         assertTrue("BackofficeScreen must check if user is employee", content.contains("val isEmployee = role == \"employee\""))
@@ -79,10 +83,14 @@ class BackofficeSanityAndRoleGatingTest {
             content.contains("Ventas en Efectivo") && content.contains("Total Esperado en Caja")
         )
 
-        // Printer integration
+        // Analytics + product bulk load integration
         assertTrue(
-            "BackofficeScreen must integrate PrinterSettingsContent",
-            content.contains("PrinterSettingsContent(")
+            "BackofficeScreen must integrate analytics dashboard",
+            content.contains("BackofficeAnalyticsSection(")
+        )
+        assertTrue(
+            "BackofficeScreen must integrate owner-only product bulk load",
+            content.contains("BackofficeProductsView(")
         )
 
         // Exit / Back handler

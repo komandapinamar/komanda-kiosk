@@ -15,16 +15,12 @@ class LoginScopeCardSanityTest {
         val content = loginFile.readText()
 
         assertTrue(
-            "LoginScreen should reference the web backoffice domain app.komanda.com.ar",
-            content.contains("app.komanda.com.ar")
+            "LoginScreen should reference the web backoffice login URL",
+            content.contains("https://kda.ar/login")
         )
         assertTrue(
-            "LoginScreen should clarify that stock is managed on web",
-            content.contains("stock")
-        )
-        assertTrue(
-            "LoginScreen should clarify that website is available for administration",
-            content.contains("página de Komanda")
+            "LoginScreen should state that the full backoffice is managed on web",
+            content.contains("backoffice completo")
         )
     }
 }

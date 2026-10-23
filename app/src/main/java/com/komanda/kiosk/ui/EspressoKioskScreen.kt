@@ -24,10 +24,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -35,6 +34,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,7 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -103,12 +103,45 @@ fun EspressoKioskScreen(
     val activeQrSession by espressoManager.activeQrSession.collectAsStateWithLifecycle()
     val approvedPayment by espressoManager.approvedPayment.collectAsStateWithLifecycle()
     val activeStaffSession by espressoManager.activeStaffSession.collectAsStateWithLifecycle()
+    val lastScannedProduct by espressoManager.lastScannedProduct.collectAsStateWithLifecycle()
+    val discountPreview by espressoManager.discountPreview.collectAsStateWithLifecycle()
+    val isDiscountPreviewLoading by espressoManager.isDiscountPreviewLoading.collectAsStateWithLifecycle()
+    val managerDiscountError by espressoManager.discountError.collectAsStateWithLifecycle()
 
     var viewMode by remember { mutableStateOf(KioskViewMode.SCANNER) }
     var showBackofficeAuthDialog by remember { mutableStateOf(false) }
-    var manualBarcodeInput by remember { mutableStateOf("") }
     var showCheckoutDialog by remember { mutableStateOf(false) }
     var quickAddError by remember { mutableStateOf<String?>(null) }
+    var discountCodeInput by remember { mutableStateOf("") }
+    var appliedDiscountCode by remember { mutableStateOf<String?>(null) }
+    var discountInputError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(cart.isEmpty()) {
+        if (cart.isEmpty()) {
+            appliedDiscountCode = null
+            discountCodeInput = ""
+            discountInputError = null
+            espressoManager.clearDiscountPreview()
+        }
+    }
+
+    LaunchedEffect(cart.size, espressoManager.totalAmount) {
+        appliedDiscountCode?.let { code ->
+            if (cart.isNotEmpty()) {
+                val stillValid = espressoManager.applyDiscountCode(code)
+                if (!stillValid) {
+                    appliedDiscountCode = null
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(lastScannedProduct?.scannedAtMillis) {
+        if (lastScannedProduct != null) {
+            kotlinx.coroutines.delay(6_000L)
+            espressoManager.clearScannedProductFeedback()
+        }
+    }
 
     LaunchedEffect(Unit) {
         espressoManager.loadCatalog()
@@ -133,9 +166,9 @@ fun EspressoKioskScreen(
                 showCheckoutDialog = false
                 coroutineScope.launch {
                     if (method == "qr") {
-                        espressoManager.startQrPayment()
+                        espressoManager.startQrPayment(discountCode = appliedDiscountCode)
                     } else {
-                        espressoManager.checkout(method)
+                        espressoManager.checkout(method, discountCode = appliedDiscountCode)
                     }
                 }
             },
@@ -212,6 +245,29 @@ fun EspressoKioskScreen(
         val (barcode, suggestion) = pendingLookup!!
 
         if (activeStaffSession != null) {
+            if (activeStaffSession?.role != "owner") {
+                AlertDialog(
+                    onDismissRequest = {
+                        quickAddError = null
+                        espressoManager.dismissPendingLookup()
+                    },
+                    title = { Text("Autorización requerida", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Text(
+                            "El alta de productos (carga rápida o manual) requiere autorización del Propietario del comercio.",
+                            fontSize = 14.sp
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            quickAddError = null
+                            espressoManager.dismissPendingLookup()
+                        }) {
+                            Text("Entendido", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+            } else {
             EspressoQuickAddDialog(
                 scannedBarcode = barcode,
                 suggestion = suggestion,
@@ -265,6 +321,7 @@ fun EspressoKioskScreen(
                     espressoManager.dismissPendingLookup()
                 }
             )
+            }
         } else {
             var staffAuthError by remember { mutableStateOf<String?>(null) }
             EspressoStaffAuthDialog(
@@ -551,65 +608,82 @@ fun EspressoKioskScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(110.dp),
-                                    tint = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(20.dp))
-                                Text(
-                                    text = "Listo para escanear",
-                                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp),
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = "Apuntá el escáner de mano o tipea el código del producto",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
-                                    color = Color.White.copy(alpha = 0.7f)
-                                )
-
-                                Spacer(modifier = Modifier.height(28.dp))
-
-                                // Manual / USB Barcode input
-                                Row(
-                                    modifier = Modifier.width(520.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = manualBarcodeInput,
-                                        onValueChange = { manualBarcodeInput = it },
-                                        placeholder = { Text("Escanear o ingresar código...", fontSize = 17.sp) },
-                                        singleLine = true,
-                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, color = Color.White),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        keyboardActions = KeyboardActions(onDone = {
-                                            if (manualBarcodeInput.isNotBlank()) {
-                                                coroutineScope.launch {
-                                                    espressoManager.onBarcodeScanned(manualBarcodeInput)
-                                                    manualBarcodeInput = ""
-                                                }
-                                            }
-                                        }),
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Button(
-                                        onClick = {
-                                            if (manualBarcodeInput.isNotBlank()) {
-                                                coroutineScope.launch {
-                                                    espressoManager.onBarcodeScanned(manualBarcodeInput)
-                                                    manualBarcodeInput = ""
-                                                }
-                                            }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary),
-                                        modifier = Modifier.height(56.dp)
+                                val scanned = lastScannedProduct
+                                if (scanned != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = Color(0xFF10B981).copy(alpha = 0.12f),
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            2.dp,
+                                            Color(0xFF10B981).copy(alpha = 0.6f)
+                                        ),
+                                        modifier = Modifier
+                                            .width(560.dp)
+                                            .padding(horizontal = 16.dp)
                                     ) {
-                                        Text("Ok", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Column(
+                                            modifier = Modifier.padding(28.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Producto escaneado",
+                                                modifier = Modifier.size(72.dp),
+                                                tint = Color(0xFF10B981)
+                                            )
+                                            Spacer(modifier = Modifier.height(14.dp))
+                                            Text(
+                                                text = "Producto escaneado",
+                                                style = MaterialTheme.typography.labelLarge.copy(fontSize = 18.sp),
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF10B981)
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = scanned.productName,
+                                                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp),
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            Text(
+                                                text = "$${scanned.price}  •  En el pedido: ${scanned.quantityInCart}",
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = KomandaTokens.AccentTertiary
+                                            )
+                                        }
                                     }
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Text(
+                                        text = "Seguí escaneando el siguiente producto",
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
+                                        color = Color.White.copy(alpha = 0.6f)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCodeScanner,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(110.dp),
+                                        tint = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    Text(
+                                        text = "Listo para escanear",
+                                        style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = "Apuntá el escáner de mano al código de barras del producto",
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                             }
                         }
@@ -642,7 +716,8 @@ fun EspressoKioskScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        // Category chips
+                        // Category chips (only published categories)
+                        val activeCategories = categories.filter { it.status == "active" }
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -659,7 +734,7 @@ fun EspressoKioskScreen(
                                     )
                                 )
                             }
-                            items(categories) { cat ->
+                            items(activeCategories) { cat ->
                                 FilterChip(
                                     selected = selectedCategory == cat.id,
                                     onClick = { espressoManager.selectCategory(cat.id) },
@@ -676,9 +751,10 @@ fun EspressoKioskScreen(
                         Spacer(modifier = Modifier.height(18.dp))
 
                         val filteredItems = items.filter { item ->
+                            val isPublished = item.status == "active"
                             val matchCat = selectedCategory == null || item.categoryId == selectedCategory
                             val matchQuery = searchQuery.isBlank() || item.name.contains(searchQuery, ignoreCase = true)
-                            matchCat && matchQuery
+                            isPublished && matchCat && matchQuery
                         }
 
                         if (filteredItems.isEmpty()) {
@@ -892,6 +968,128 @@ fun EspressoKioskScreen(
 
                     Spacer(modifier = Modifier.height(18.dp))
 
+                    // Discount code
+                    Surface(
+                        color = Zinc950,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Código de descuento",
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    value = discountCodeInput,
+                                    onValueChange = {
+                                        discountCodeInput = it.uppercase(java.util.Locale.US)
+                                        discountInputError = null
+                                        espressoManager.clearDiscountError()
+                                    },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = Zinc900,
+                                        unfocusedContainerColor = Zinc900,
+                                        focusedBorderColor = KomandaTokens.AccentTertiary,
+                                        unfocusedBorderColor = Zinc800,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        cursorColor = KomandaTokens.AccentTertiary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val clean = discountCodeInput.trim().uppercase(java.util.Locale.US)
+                                        if (clean.isBlank()) {
+                                            discountInputError = "Ingresá un código."
+                                        } else {
+                                            coroutineScope.launch {
+                                                discountInputError = null
+                                                val applied = espressoManager.applyDiscountCode(clean)
+                                                if (applied) {
+                                                    appliedDiscountCode = clean
+                                                    discountCodeInput = ""
+                                                } else {
+                                                    appliedDiscountCode = null
+                                                    discountInputError = espressoManager.discountError.value
+                                                        ?: "No se pudo aplicar el código."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !isDiscountPreviewLoading && cart.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = KomandaTokens.AccentTertiary,
+                                        contentColor = KomandaTokens.AccentPrimary
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    if (isDiscountPreviewLoading) {
+                                        CircularProgressIndicator(
+                                            color = KomandaTokens.AccentPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else {
+                                        Text("Aplicar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    }
+                                }
+                            }
+
+                            appliedDiscountCode?.let { code ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Código aplicado: $code",
+                                            color = Color(0xFF10B981),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        discountPreview?.let { preview ->
+                                            Text(
+                                                text = "Descuento: -$${preview.discountTotal}",
+                                                color = Color(0xFF10B981),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            if (preview.applicableTender == "cash") {
+                                                Text(
+                                                    text = "Exclusivo pagos en efectivo",
+                                                    color = Color(0xFFFCD34D),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                    TextButton(onClick = {
+                                        appliedDiscountCode = null
+                                        espressoManager.clearDiscountPreview()
+                                        discountInputError = null
+                                    }) {
+                                        Text("Quitar", color = Color.Red.copy(alpha = 0.8f), fontSize = 13.sp)
+                                    }
+                                }
+                            }
+
+                            (discountInputError ?: managerDiscountError)?.let { error ->
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(text = error, color = Color(0xFFF87171), fontSize = 13.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     // Checkout Summary Bar
                     Surface(
                         color = Zinc950,
@@ -906,7 +1104,11 @@ fun EspressoKioskScreen(
                             ) {
                                 Text("Total a pagar", color = Color.White.copy(alpha = 0.7f), fontSize = 20.sp, fontWeight = FontWeight.Medium)
                                 Text(
-                                    text = "$${String.format(java.util.Locale.US, "%.2f", espressoManager.totalAmount)}",
+                                    text = "$${String.format(
+                                        java.util.Locale.US,
+                                        "%.2f",
+                                        discountPreview?.total?.toDoubleOrNull() ?: espressoManager.totalAmount
+                                    )}",
                                     fontSize = 38.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = KomandaTokens.AccentTertiary

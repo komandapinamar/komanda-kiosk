@@ -11,6 +11,10 @@ import com.komanda.kiosk.core.network.CloseCashShiftRequest
 import com.komanda.kiosk.core.network.CreateCategoryRequest
 import com.komanda.kiosk.core.network.CreateCatalogItemRequest
 import com.komanda.kiosk.core.network.CreateDirectOrderRequest
+import com.komanda.kiosk.core.network.DashboardAnalyticsDto
+import com.komanda.kiosk.core.network.FinancialSummaryDto
+import com.komanda.kiosk.core.network.KioskDiscountPreviewRequest
+import com.komanda.kiosk.core.network.KioskDiscountPreviewResponse
 import com.komanda.kiosk.core.network.KioskPaymentCancelResponse
 import com.komanda.kiosk.core.network.KioskPaymentSessionRequest
 import com.komanda.kiosk.core.network.KioskPaymentSessionResponse
@@ -21,11 +25,16 @@ import com.komanda.kiosk.core.network.MobileLoginRequest
 import com.komanda.kiosk.core.network.MobileLoginResponse
 import com.komanda.kiosk.core.network.OpenCashShiftRequest
 import com.komanda.kiosk.core.network.OrderDto
+import com.komanda.kiosk.core.network.UpdateCatalogCategoryRequest
+import com.komanda.kiosk.core.network.UpdateCatalogItemRequest
 import com.komanda.kiosk.core.network.VerifyStaffRequest
 import com.komanda.kiosk.core.network.VerifyStaffResponse
+import com.komanda.kiosk.ui.AnalyticsRangePreset
+import com.komanda.kiosk.ui.BulkProductRow
 import com.komanda.kiosk.ui.EspressoManager
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -120,7 +129,8 @@ open class FakeEspressoApi : KomandaApi {
         val newCat = CatalogCategoryDto(
             id = "cat-${categories.size + 1}",
             name = body.name,
-            description = body.description
+            description = body.description,
+            status = body.status
         )
         categories.add(newCat)
         return Response.success(newCat)
@@ -163,16 +173,71 @@ open class FakeEspressoApi : KomandaApi {
             genericIcon = body.genericIcon,
             trackStock = body.trackStock,
             stockQuantity = body.stockQuantity,
-            status = "active"
+            status = body.status
         )
         items.add(newItem)
         return Response.success(newItem)
+    }
+
+    override suspend fun updateCatalogItem(
+        tenantId: String,
+        itemId: String,
+        ifMatch: String,
+        body: UpdateCatalogItemRequest
+    ): Response<CatalogItemDto> {
+        val index = items.indexOfFirst { it.id == itemId }
+        if (index < 0) {
+            return Response.error(404, okhttp3.ResponseBody.create(null, "{}"))
+        }
+        val current = items[index]
+        val updated = current.copy(
+            status = body.status ?: current.status,
+            version = current.version + 1
+        )
+        items[index] = updated
+        return Response.success(updated)
+    }
+
+    override suspend fun updateCatalogCategory(
+        tenantId: String,
+        categoryId: String,
+        ifMatch: String,
+        body: UpdateCatalogCategoryRequest
+    ): Response<CatalogCategoryDto> {
+        val index = categories.indexOfFirst { it.id == categoryId }
+        if (index < 0) {
+            return Response.error(404, okhttp3.ResponseBody.create(null, "{}"))
+        }
+        val current = categories[index]
+        val updated = current.copy(
+            status = body.status ?: current.status,
+            version = current.version + 1
+        )
+        categories[index] = updated
+        return Response.success(updated)
     }
 
     var currentShift: CashShiftDto? = null
 
     override suspend fun getCurrentCashShift(tenantId: String): Response<CashShiftResponse> =
         Response.success(CashShiftResponse(currentShift))
+
+    var analyticsResponse: DashboardAnalyticsDto = DashboardAnalyticsDto()
+    var mockAnalyticsSuccess: Boolean = true
+
+    override suspend fun getDashboardAnalytics(
+        tenantId: String,
+        from: String?,
+        to: String?,
+        granularity: String?,
+        source: String?
+    ): Response<DashboardAnalyticsDto> {
+        return if (mockAnalyticsSuccess) {
+            Response.success(analyticsResponse)
+        } else {
+            Response.error(403, okhttp3.ResponseBody.create(null, "{\"code\": \"FORBIDDEN_ROLE\"}"))
+        }
+    }
 
     override suspend fun openCashShift(
         tenantId: String,
@@ -207,6 +272,29 @@ open class FakeEspressoApi : KomandaApi {
 
     var lastPaymentSessionRequest: KioskPaymentSessionRequest? = null
     var lastCancelledAttemptId: String? = null
+    var lastDiscountPreviewRequest: KioskDiscountPreviewRequest? = null
+    var mockDiscountEligible: Boolean = true
+    var mockDiscountReason: String? = null
+
+    override suspend fun previewKioskDiscount(
+        tenantId: String,
+        body: KioskDiscountPreviewRequest
+    ): Response<KioskDiscountPreviewResponse> {
+        lastDiscountPreviewRequest = body
+        return Response.success(
+            KioskDiscountPreviewResponse(
+                eligible = mockDiscountEligible,
+                reason = mockDiscountReason,
+                code = body.discountCode,
+                name = "Promo Test",
+                subtotal = "3500.00",
+                discountTotal = if (mockDiscountEligible) "350.00" else "0.00",
+                total = if (mockDiscountEligible) "3150.00" else "3500.00",
+                applicableTender = "all"
+            )
+        )
+    }
+
 
     override suspend fun createKioskPaymentSession(
         tenantId: String,
@@ -312,7 +400,7 @@ class EspressoManagerTest {
     }
 
     @Test
-    fun quickCreateItem_persistsAndAddsToCart() = runTest {
+    fun quickCreateItem_persistsAsDraftWithoutCart() = runTest {
         val api = FakeEspressoApi()
         val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
         manager.loadCatalog()
@@ -329,9 +417,9 @@ class EspressoManagerTest {
         )
 
         assertTrue(success)
-        assertEquals(1, manager.cart.value.size)
-        assertEquals("Galletitas Oreo", manager.cart.value[0].item.name)
-        assertEquals(1, manager.items.value.filter { it.name == "Galletitas Oreo" }.size)
+        assertEquals(0, manager.cart.value.size)
+        val created = manager.items.value.first { it.name == "Galletitas Oreo" }
+        assertEquals("draft", created.status)
     }
 
     @Test
@@ -559,7 +647,7 @@ class EspressoManagerTest {
     }
 
     @Test
-    fun createCategory_propagatesActiveStatus() = runTest {
+    fun createCategory_createsDraft() = runTest {
         val api = FakeEspressoApi()
         val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
         manager.loadCatalog()
@@ -567,7 +655,7 @@ class EspressoManagerTest {
         val newCat = manager.createCategory("Snacks y Golosinas")
 
         assertNotNull(newCat)
-        assertEquals("active", api.lastCreateCategoryRequest?.status)
+        assertEquals("draft", api.lastCreateCategoryRequest?.status)
         assertEquals("Snacks y Golosinas", api.lastCreateCategoryRequest?.name)
     }
 
@@ -673,5 +761,175 @@ class EspressoManagerTest {
 
         assertNull(cat)
         assertEquals("Error al crear la categoría.", manager.statusMessage.value)
+    }
+
+    @Test
+    fun scanningSameProductTwice_updatesFeedbackAndQuantity() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        manager.onBarcodeScanned("7790895000997")
+        assertNotNull(manager.lastScannedProduct.value)
+        assertEquals(1, manager.lastScannedProduct.value?.quantityInCart)
+
+        manager.onBarcodeScanned("7790895000997")
+        assertEquals(1, manager.cart.value.size)
+        assertEquals(2, manager.cart.value[0].quantity)
+        assertEquals(2, manager.lastScannedProduct.value?.quantityInCart)
+        assertEquals("Coca-Cola 500ml", manager.lastScannedProduct.value?.productName)
+    }
+
+    @Test
+    fun bulkCreateItems_createsValidRowsAndReportsInvalidOnes() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        val result = manager.bulkCreateItems(
+            rows = listOf(
+                BulkProductRow(name = "Agua 500ml", price = "1200"),
+                BulkProductRow(name = "", price = "900"),
+                BulkProductRow(name = "Jugo", price = "-5")
+            ),
+            categoryId = "cat-1"
+        )
+
+        assertEquals(1, result.createdCount)
+        assertEquals(2, result.failedRows.size)
+        assertTrue(manager.items.value.any { it.name == "Agua 500ml" })
+    }
+
+    @Test
+    fun loadAnalytics_setsDashboardMetrics() = runTest {
+        val api = FakeEspressoApi()
+        api.analyticsResponse = DashboardAnalyticsDto(
+            financial = FinancialSummaryDto(totalRevenue = "12345.00")
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        manager.loadAnalytics(AnalyticsRangePreset.TODAY)
+
+        assertEquals("12345.00", manager.analytics.value?.financial?.totalRevenue)
+        assertNull(manager.analyticsError.value)
+    }
+
+    @Test
+    fun loadAnalytics_whenForbidden_setsOwnerOnlyError() = runTest {
+        val api = FakeEspressoApi()
+        api.mockAnalyticsSuccess = false
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        manager.loadAnalytics(AnalyticsRangePreset.LAST_7_DAYS)
+
+        assertNull(manager.analytics.value)
+        assertTrue(manager.analyticsError.value?.contains("Propietario") == true)
+    }
+
+    @Test
+    fun checkoutCash_forwardsDiscountCode() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.addToCart(api.items.first())
+
+        manager.checkout("cash", discountCode = "PROMO10")
+
+        assertEquals("PROMO10", api.lastDirectOrderRequest?.discountCode)
+    }
+
+    @Test
+    fun startQrPayment_forwardsDiscountCode() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.addToCart(api.items.first())
+
+        manager.startQrPayment(discountCode = "VERANO2026")
+
+        assertEquals("VERANO2026", api.lastPaymentSessionRequest?.discountCode)
+    }
+
+    @Test
+    fun applyDiscountCode_setsPreviewWhenEligible() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.addToCart(api.items.first())
+
+        val applied = manager.applyDiscountCode(" promo10 ")
+
+        assertTrue(applied)
+        assertEquals("PROMO10", api.lastDiscountPreviewRequest?.discountCode)
+        assertEquals("3150.00", manager.discountPreview.value?.total)
+        assertNull(manager.discountError.value)
+    }
+
+    @Test
+    fun applyDiscountCode_mapsIneligibilityReason() = runTest {
+        val api = FakeEspressoApi()
+        api.mockDiscountEligible = false
+        api.mockDiscountReason = "DISCOUNT_EXPIRED"
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.addToCart(api.items.first())
+
+        val applied = manager.applyDiscountCode("VENCIDO")
+
+        assertFalse(applied)
+        assertNull(manager.discountPreview.value)
+        assertEquals("El cupón está vencido.", manager.discountError.value)
+    }
+
+    @Test
+    fun bulkCreateItems_savesDrafts() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+
+        manager.bulkCreateItems(
+            rows = listOf(BulkProductRow(name = "Producto Nuevo", price = "1500")),
+            categoryId = "cat-1"
+        )
+
+        assertEquals("draft", api.lastCatalogItemRequest?.status)
+        assertEquals("draft", manager.items.value.first { it.name == "Producto Nuevo" }.status)
+    }
+
+    @Test
+    fun publishDrafts_publishesCategoryBeforeItems() = runTest {
+        val api = FakeEspressoApi()
+        api.categories.add(
+            com.komanda.kiosk.core.network.CatalogCategoryDto(
+                id = "cat-draft",
+                name = "Categoría Borrador",
+                status = "draft"
+            )
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+        manager.bulkCreateItems(
+            rows = listOf(BulkProductRow(name = "Producto Borrador", price = "2200")),
+            categoryId = "cat-draft"
+        )
+
+        val result = manager.publishDrafts()
+
+        assertEquals(1, result.publishedCategories)
+        assertEquals(1, result.publishedItems)
+        assertEquals("active", manager.categories.value.first { it.id == "cat-draft" }.status)
+        assertEquals("active", manager.items.value.first { it.name == "Producto Borrador" }.status)
+    }
+
+    @Test
+    fun quickCreateItem_savesDraft() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        val success = manager.quickCreateItem(
+            name = "Alfajor Nuevo",
+            price = "1800",
+            categoryId = "cat-1",
+            barcode = "7790000000001"
+        )
+
+        assertTrue(success)
+        assertEquals("draft", api.lastCatalogItemRequest?.status)
+        assertEquals("draft", manager.items.value.first { it.name == "Alfajor Nuevo" }.status)
     }
 }

@@ -17,7 +17,27 @@ data class KioskPaymentCustomerRequest(
 data class KioskPaymentSessionRequest(
     val items: List<KioskPaymentItemRequest>,
     val customer: KioskPaymentCustomerRequest = KioskPaymentCustomerRequest(),
-    val notes: String? = null
+    val notes: String? = null,
+    val discountCode: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class KioskDiscountPreviewRequest(
+    val items: List<KioskPaymentItemRequest>,
+    val discountCode: String,
+    val tender: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class KioskDiscountPreviewResponse(
+    val eligible: Boolean = false,
+    val reason: String? = null,
+    val code: String = "",
+    val name: String? = null,
+    val subtotal: String = "0.00",
+    val discountTotal: String = "0.00",
+    val total: String = "0.00",
+    val applicableTender: String? = null
 )
 
 @JsonClass(generateAdapter = true)

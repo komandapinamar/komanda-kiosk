@@ -66,6 +66,24 @@ interface KomandaApi {
     ): Response<CatalogItemDto>
 
     @Headers("Content-Type: application/json")
+    @retrofit2.http.PATCH("/api/v1/tenants/{tenantId}/catalog/items/{itemId}")
+    suspend fun updateCatalogItem(
+        @Path("tenantId") tenantId: String,
+        @Path("itemId") itemId: String,
+        @Header("If-Match") ifMatch: String,
+        @Body body: UpdateCatalogItemRequest
+    ): Response<CatalogItemDto>
+
+    @Headers("Content-Type: application/json")
+    @retrofit2.http.PATCH("/api/v1/tenants/{tenantId}/catalog/categories/{categoryId}")
+    suspend fun updateCatalogCategory(
+        @Path("tenantId") tenantId: String,
+        @Path("categoryId") categoryId: String,
+        @Header("If-Match") ifMatch: String,
+        @Body body: UpdateCatalogCategoryRequest
+    ): Response<CatalogCategoryDto>
+
+    @Headers("Content-Type: application/json")
     @POST("/api/v1/tenants/{tenantId}/auth/verify-staff")
     suspend fun verifyStaff(
         @Path("tenantId") tenantId: String,
@@ -76,6 +94,15 @@ interface KomandaApi {
     suspend fun getCurrentCashShift(
         @Path("tenantId") tenantId: String
     ): Response<CashShiftResponse>
+
+    @GET("/api/v1/tenants/{tenantId}/analytics")
+    suspend fun getDashboardAnalytics(
+        @Path("tenantId") tenantId: String,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("granularity") granularity: String? = null,
+        @Query("source") source: String? = null
+    ): Response<DashboardAnalyticsDto>
 
     @Headers("Content-Type: application/json")
     @POST("/api/v1/tenants/{tenantId}/cash-shifts/open")
@@ -91,6 +118,13 @@ interface KomandaApi {
         @Path("shiftId") shiftId: String,
         @Body body: CloseCashShiftRequest
     ): Response<CashShiftDto>
+
+    @Headers("Content-Type: application/json")
+    @POST("/api/v1/tenants/{tenantId}/kiosk/discount-preview")
+    suspend fun previewKioskDiscount(
+        @Path("tenantId") tenantId: String,
+        @Body body: KioskDiscountPreviewRequest
+    ): Response<KioskDiscountPreviewResponse>
 
     @Headers("Content-Type: application/json")
     @POST("/api/v1/tenants/{tenantId}/kiosk/payment-sessions")

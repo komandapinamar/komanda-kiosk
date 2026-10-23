@@ -245,12 +245,12 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        Text(
-                            text = "Recordá que contás con la página de Komanda para manejar el stock, productos y administración (app.komanda.com.ar).",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Zinc400,
-                            lineHeight = 20.sp
-                        )
+                            Text(
+                                text = "Podés gestionar el backoffice completo desde https://kda.ar/login",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Zinc400,
+                                lineHeight = 20.sp
+                            )
                     }
                 }
 

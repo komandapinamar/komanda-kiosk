@@ -79,32 +79,45 @@ class PrinterConfigRepository(
 
         val rawJson = prefs.getString(KEY_PRINTERS, null)
         if (rawJson.isNullOrBlank()) {
-            // Auto-register default internal Telpo printer on first launch
-            val defaultList = listOf(
-                PrinterConfig(
-                    id = DEFAULT_USB_ID,
-                    name = "Impresora Térmica Telpo",
-                    type = PrinterType.USB_ESC_POS,
-                    role = PrinterRole.COUNTER,
-                    trigger = PrintTrigger.ALWAYS_AUTOMATIC,
-                    copies = 1
-                )
-            )
+            val defaultList = listOf(defaultPrinter())
             _printers.value = defaultList
             persistPrinters(defaultList)
-        } else {
-            try {
-                val array = JSONArray(rawJson)
-                val list = mutableListOf<PrinterConfig>()
-                for (i in 0 until array.length()) {
-                    list.add(PrinterConfig.fromJson(array.getJSONObject(i)))
-                }
-                _printers.value = list
-            } catch (_: Exception) {
-                _printers.value = emptyList()
+            return
+        }
+
+        // Kiosk always operates a single printer: keep only the first persisted profile.
+        try {
+            val array = JSONArray(rawJson)
+            val list = mutableListOf<PrinterConfig>()
+            for (i in 0 until array.length()) {
+                list.add(PrinterConfig.fromJson(array.getJSONObject(i)))
             }
+            val single = list.take(1)
+            if (single.isEmpty()) {
+                val defaultList = listOf(defaultPrinter())
+                _printers.value = defaultList
+                persistPrinters(defaultList)
+            } else {
+                _printers.value = single
+                if (single.size != list.size) {
+                    persistPrinters(single)
+                }
+            }
+        } catch (_: Exception) {
+            val defaultList = listOf(defaultPrinter())
+            _printers.value = defaultList
+            persistPrinters(defaultList)
         }
     }
+
+    private fun defaultPrinter() = PrinterConfig(
+        id = DEFAULT_USB_ID,
+        name = "Impresora Térmica Telpo",
+        type = PrinterType.USB_ESC_POS,
+        role = PrinterRole.COUNTER,
+        trigger = PrintTrigger.ALWAYS_AUTOMATIC,
+        copies = 1
+    )
 
     fun setMasterAutoPrint(enabled: Boolean) {
         _masterAutoPrintEnabled.value = enabled
