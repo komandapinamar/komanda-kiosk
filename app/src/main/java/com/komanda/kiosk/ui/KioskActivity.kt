@@ -6,6 +6,9 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +28,7 @@ import com.komanda.kiosk.core.auth.SecureSessionStorage
 import com.komanda.kiosk.core.auth.ui.LoginScreen
 import com.komanda.kiosk.core.auth.ui.NoActiveTenantScreen
 import com.komanda.kiosk.core.auth.ui.TenantSelectionScreen
+import com.komanda.kiosk.core.launcher.LauncherManager
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.NetworkClient
 import com.komanda.kiosk.ui.settings.PrinterSettingsScreen
@@ -54,6 +58,8 @@ class KioskActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        hideSystemUI()
+        LauncherManager(this).startKioskLockTask(this)
 
         val prefs = getSharedPreferences("komanda_pos_prefs", MODE_PRIVATE)
         val savedBaseUrl = prefs.getString("server_base_url", null)
@@ -206,5 +212,19 @@ class KioskActivity : ComponentActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemUI()
+        }
+    }
+
+    private fun hideSystemUI() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 }

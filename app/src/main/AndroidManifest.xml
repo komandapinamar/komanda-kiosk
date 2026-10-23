@@ -26,6 +26,7 @@
         <activity
             android:name=".ui.KioskActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.KomandaKiosk">
@@ -38,7 +39,7 @@
         <activity-alias
             android:name=".KioskHomeLauncherAlias"
             android:targetActivity=".ui.KioskActivity"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
             android:label="Komanda Kiosk">
             <intent-filter>
