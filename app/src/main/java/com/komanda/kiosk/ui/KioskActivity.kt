@@ -31,7 +31,6 @@ import com.komanda.kiosk.core.auth.ui.TenantSelectionScreen
 import com.komanda.kiosk.core.launcher.LauncherManager
 import com.komanda.kiosk.core.network.KomandaApi
 import com.komanda.kiosk.core.network.NetworkClient
-import com.komanda.kiosk.ui.settings.PrinterSettingsScreen
 import com.komanda.kiosk.hardware.printing.PrinterRouter
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.KomandaTheme
@@ -40,8 +39,7 @@ import kotlinx.coroutines.launch
 
 enum class EspressoScreen {
     KIOSK,
-    BACKOFFICE,
-    PRINTER_SETTINGS
+    BACKOFFICE
 }
 
 class KioskActivity : ComponentActivity() {
@@ -171,17 +169,10 @@ class KioskActivity : ComponentActivity() {
                             EspressoScreen.BACKOFFICE -> {
                                 BackofficeScreen(
                                     espressoManager = manager,
-                                    printerRouter = printerRouter,
                                     onBackToKiosk = {
                                         manager.endStaffSession()
                                         currentScreen = EspressoScreen.KIOSK
                                     }
-                                )
-                            }
-                            EspressoScreen.PRINTER_SETTINGS -> {
-                                PrinterSettingsScreen(
-                                    router = printerRouter,
-                                    onBack = { currentScreen = EspressoScreen.BACKOFFICE }
                                 )
                             }
                         }

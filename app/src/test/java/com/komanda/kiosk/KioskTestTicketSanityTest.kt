@@ -11,20 +11,6 @@ import java.io.File
 class KioskTestTicketSanityTest {
 
     @Test
-    fun printerSettings_declaresKioskTestPrintButton() {
-        val projectDir = File(System.getProperty("user.dir") ?: ".")
-        val settingsFile = File(projectDir, "src/main/java/com/komanda/kiosk/ui/settings/PrinterSettingsScreen.kt")
-
-        assertTrue("PrinterSettingsScreen.kt should exist", settingsFile.exists())
-        val content = settingsFile.readText()
-
-        assertTrue(
-            "PrinterSettingsScreen should declare 'Probar Impresión Kiosk'",
-            content.contains("Probar Impresión Kiosk")
-        )
-    }
-
-    @Test
     fun renderKioskTestTicket_emitsExpectedHeadersAndCutCommand() {
         val testPayload = TicketPayload(
             orderId = "test-check-diag",
