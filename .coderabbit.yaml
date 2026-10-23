@@ -1,0 +1,145 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Komanda Kiosk — native Android self-service kiosk (Kotlin + Compose).
+language: "en-US"
+inheritance: false
+
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  high_level_summary_in_walkthrough: false
+  review_status: true
+  review_details: false
+  poem: false
+  changed_files_summary: true
+  abort_on_close: true
+  commit_status: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "wip"
+      - "[skip ci]"
+
+  tools:
+    detekt:
+      enabled: true
+    actionlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+
+  pre_merge_checks:
+    docstrings:
+      enabled: false
+    title:
+      enabled: true
+    issue_assessment:
+      enabled: true
+    custom_checks:
+      - name: "Kiosk lock mode is preserved"
+        mode: "error"
+        instructions: |
+          This app runs unattended. Fail if a change removes or can bypass
+          LockTaskMode pinning, the immersive sticky system UI, or the
+          restriction preventing a customer from leaving the app. Also fail
+          if a settings or debug screen becomes reachable from the customer
+          flow without an authenticated operator PIN, or if the back gesture
+          is allowed to exit a customer-facing screen.
+
+      - name: "Payment session lifecycle is safe"
+        mode: "error"
+        instructions: |
+          Fail if a payment session can be marked complete without a
+          verified provider response, if polling continues after a terminal
+          state, if a session is cancelled locally while the provider still
+          treats it as open, or if a retry or double tap can create a second
+          session and charge the customer twice. Require the amount to come
+          from the server, never from a locally edited total.
+
+  path_instructions:
+    - path: "app/src/main/java/**/*.kt"
+      instructions: |
+        Kotlin conventions: prefer expression bodies and value classes.
+        Flag `!!`, `GlobalScope`, `runBlocking` on the main thread, and
+        swallowed `catch (e: Exception) {}`. Require coroutines in a
+        structured scope tied to the caller's lifecycle.
+
+    - path: "app/src/main/java/**/core/network/**"
+      instructions: |
+        Retrofit/OkHttp. Fail on cleartext HTTP, a missing client timeout,
+        or an interceptor logging bodies that may carry session tokens or
+        payment data. Require a bounded overall timeout so a stuck poll
+        cannot run forever, and exactly one refresh attempt on a 401.
+
+    - path: "app/src/main/java/**/core/auth/**"
+      instructions: |
+        Session handling. Require credentials to be held in encrypted
+        storage and never logged or left in a global after logout. Verify
+        the session is cleared when the kiosk switches accounts.
+
+    - path: "app/src/main/java/**/core/model/**"
+      instructions: |
+        Domain models. Fail on mutable collections or vars exposed from a
+        shared model, and on a model that carries a raw provider payload
+        through to the UI layer instead of a mapped domain type.
+
+    - path: "app/src/main/java/**/ui/qr/**"
+      instructions: |
+        QR and payment screens — highest risk. Require the amount to be
+        server-authoritative. Fail if the QR payload is rebuilt from local
+        state, if polling is not cancelled on leaving the screen, and if a
+        timeout leads to anything other than a fail-closed state.
+
+    - path: "app/src/main/java/**/hardware/printing/**"
+      instructions: |
+        Direct ESC/POS printing. Flag a raw escape sequence whose length
+        does not match the bytes written, and an untrusted string encoded
+        without stripping control characters (ESC, GS, NUL). Verify a
+        receipt is not marked printed until the write completes and that a
+        retry cannot duplicate it.
+
+    - path: "app/src/main/java/**/ui/**"
+      instructions: |
+        Compose UI. Flag business logic and direct network calls inside
+        composables, blocking I/O on the main thread, and `LaunchedEffect`
+        keys that are unstable and restart every recomposition. Require
+        loading and error states, and cleanup for polling or listeners.
+
+    - path: "app/src/main/java/**/core/launcher/**"
+      instructions: |
+        Kiosk entry point. Treat as security-sensitive: any change to how
+        the app acquires or releases lock-task mode, starts on boot, or
+        handles the home/back intents must be called out explicitly.
+
+    - path: "app/src/main/AndroidManifest.xml"
+      instructions: |
+        Fail on a newly added permission not required by the feature, on an
+        exported component without explicit protection, and on any removal
+        of the device-owner or lock-task configuration.
+
+    - path: "app/src/test/**/*.kt"
+      instructions: |
+        Require coverage of payment failure, timeout, and double-tap paths.
+        Flag disabled tests and assertions on mocks rather than behavior.
+
+    - path: "*.gradle.kts"
+      instructions: |
+        Fail on an unexplained new dependency or a major-version upgrade.
+        Keep release builds minified and ensure no debug signing config
+        reaches a release variant.
+
+  path_filters:
+    - "**/build/**"
+    - "**/.gradle/**"
+    - "**/.kotlin/**"
+    - "**/*.md"
+
+chat:
+  auto_reply: true
+  art: false
