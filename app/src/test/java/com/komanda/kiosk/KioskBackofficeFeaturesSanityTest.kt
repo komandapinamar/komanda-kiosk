@@ -77,6 +77,29 @@ class KioskBackofficeFeaturesSanityTest {
     }
 
     @Test
+    fun productsBulkLoad_allowsCameraBarcodeScanning() {
+        val products = source("src/main/java/com/komanda/kiosk/ui/BackofficeProductsView.kt")
+        val scanner = source("src/main/java/com/komanda/kiosk/ui/BarcodeScannerDialog.kt")
+
+        assertTrue(
+            "Bulk barcode field must expose a camera scan action",
+            products.contains("Escanear código con la cámara")
+        )
+        assertTrue(
+            "Bulk rows must open the camera scanner dialog",
+            products.contains("BarcodeScannerDialog(")
+        )
+        assertTrue(
+            "Scanner dialog must use CameraX preview",
+            scanner.contains("PreviewView")
+        )
+        assertTrue(
+            "Scanner dialog must decode with ZXing",
+            scanner.contains("MultiFormatReader")
+        )
+    }
+
+    @Test
     fun cashControl_embedsFullAnalyticsDashboard() {
         val content = source("src/main/java/com/komanda/kiosk/ui/BackofficeAnalytics.kt")
 

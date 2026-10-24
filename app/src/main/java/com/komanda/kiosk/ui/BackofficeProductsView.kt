@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -91,6 +92,7 @@ fun BackofficeProductsView(
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var newCategoryName by remember { mutableStateOf("") }
     var formError by remember { mutableStateOf<String?>(null) }
+    var scanningRowId by remember { mutableStateOf<String?>(null) }
 
     if (!isOwner) {
         OwnerOnlyNotice(
@@ -336,7 +338,8 @@ fun BackofficeProductsView(
                         row = row,
                         canRemove = rows.size > 1,
                         onChange = { updated -> rows[index] = updated },
-                        onRemove = { rows.removeAt(index) }
+                        onRemove = { rows.removeAt(index) },
+                        onScanBarcode = { scanningRowId = row.localId }
                     )
                 }
 
@@ -420,6 +423,20 @@ fun BackofficeProductsView(
             }
         }
     }
+
+    val scanningRow = rows.firstOrNull { it.localId == scanningRowId }
+    if (scanningRow != null) {
+        BarcodeScannerDialog(
+            onDismiss = { scanningRowId = null },
+            onBarcodeScanned = { code ->
+                val rowIndex = rows.indexOfFirst { it.localId == scanningRow.localId }
+                if (rowIndex >= 0) {
+                    rows[rowIndex] = rows[rowIndex].copy(barcode = code.trim())
+                }
+                scanningRowId = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -428,7 +445,8 @@ private fun BulkProductRowEditor(
     row: EditableProductRow,
     canRemove: Boolean,
     onChange: (EditableProductRow) -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onScanBarcode: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(10.dp),
@@ -493,6 +511,15 @@ private fun BulkProductRowEditor(
                     label = { Text("Código (opcional)") },
                     singleLine = true,
                     colors = darkFieldColors(),
+                    trailingIcon = {
+                        IconButton(onClick = onScanBarcode) {
+                            Icon(
+                                Icons.Default.QrCodeScanner,
+                                contentDescription = "Escanear código con la cámara",
+                                tint = KomandaTokens.AccentTertiary
+                            )
+                        }
+                    },
                     modifier = Modifier.weight(1.2f)
                 )
                 if (row.trackStock) {
