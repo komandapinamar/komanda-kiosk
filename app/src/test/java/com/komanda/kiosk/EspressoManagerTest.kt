@@ -168,6 +168,7 @@ open class FakeEspressoApi : KomandaApi {
             name = body.name,
             price = body.price,
             categoryId = body.categoryId,
+            itemType = body.itemType,
             barcode = body.barcode,
             isGeneric = body.isGeneric,
             genericIcon = body.genericIcon,
@@ -931,5 +932,76 @@ class EspressoManagerTest {
         assertTrue(success)
         assertEquals("draft", api.lastCatalogItemRequest?.status)
         assertEquals("draft", manager.items.value.first { it.name == "Alfajor Nuevo" }.status)
+    }
+
+    @Test
+    fun scaleBarcode_twoScansSamePluDifferentAmounts_createsIndependentLines() = runTest {
+        val api = FakeEspressoApi()
+        api.items.add(
+            CatalogItemDto(
+                id = "item-weighted-1",
+                name = "Queso Tybo",
+                price = "12000.00",
+                categoryId = "cat-1",
+                itemType = "weighted",
+                barcode = "00123",
+                status = "active"
+            )
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        manager.onBarcodeScanned("2000123024509")
+        manager.onBarcodeScanned("2000123018003")
+
+        assertEquals(2, manager.cart.value.size)
+        assertEquals(2450.0, manager.cart.value[0].lineTotal, 0.01)
+        assertEquals(1800.0, manager.cart.value[1].lineTotal, 0.01)
+        assertEquals(4250.0, manager.totalAmount, 0.01)
+
+        // Verify QR payment session forwards calculatedSubtotal for each weighted line
+        manager.startQrPayment()
+        val qrItems = api.lastPaymentSessionRequest?.items
+        assertEquals(2, qrItems?.size)
+        assertEquals("2450.00", qrItems?.get(0)?.calculatedSubtotal)
+        assertEquals("1800.00", qrItems?.get(1)?.calculatedSubtotal)
+
+        manager.checkout("cash")
+        val orderItems = api.lastDirectOrderRequest?.items
+        assertEquals(2, orderItems?.size)
+        assertEquals("2450.00", orderItems?.get(0)?.calculatedSubtotal)
+        assertEquals("1800.00", orderItems?.get(1)?.calculatedSubtotal)
+    }
+
+    @Test
+    fun scaleBarcode_normalizePlu_extractsD3ToD7FromScaleEan13AndRejectsInvalidPlu() {
+        assertEquals("00123", com.komanda.kiosk.ui.ScaleBarcodeParser.normalizePlu("2000123024509"))
+        assertEquals("00123", com.komanda.kiosk.ui.ScaleBarcodeParser.normalizePlu("123"))
+        assertEquals("", com.komanda.kiosk.ui.ScaleBarcodeParser.normalizePlu("00000"))
+        assertEquals("", com.komanda.kiosk.ui.ScaleBarcodeParser.normalizePlu("abc"))
+    }
+
+    @Test
+    fun scaleBarcode_invalidCheckDigitOrZeroAmount_isRejected() = runTest {
+        val api = FakeEspressoApi()
+        api.items.add(
+            CatalogItemDto(
+                id = "item-weighted-1",
+                name = "Queso Tybo",
+                price = "12000.00",
+                categoryId = "cat-1",
+                itemType = "weighted",
+                barcode = "00123",
+                status = "active"
+            )
+        )
+        val manager = EspressoManager(tenantId = "tenant-1", tenantName = "Kiosco Express", api = api)
+        manager.loadCatalog()
+
+        manager.onBarcodeScanned("2000123024500")
+        assertEquals(0, manager.cart.value.size)
+
+        manager.onBarcodeScanned("2000123000008")
+        assertEquals(0, manager.cart.value.size)
     }
 }

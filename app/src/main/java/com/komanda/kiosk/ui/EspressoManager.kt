@@ -55,12 +55,64 @@ data class ScannedProductFeedback(
     val price: String,
     val quantityInCart: Int,
     val barcode: String? = null,
+    val categoryName: String? = null,
+    val isWeighted: Boolean = false,
     val scannedAtMillis: Long = System.currentTimeMillis()
 )
+
+data class ScaleBarcodeData(
+    val pluCode: String,
+    val calculatedSubtotal: Double,
+    val calculatedSubtotalFormatted: String
+)
+
+object ScaleBarcodeParser {
+    private val SCALE_EAN13_REGEX = Regex("""^(2[0-9])\d{11}$""")
+
+    fun isScalePrefix(barcode: String): Boolean {
+        val clean = barcode.trim()
+        return SCALE_EAN13_REGEX.matches(clean)
+    }
+
+    fun normalizePlu(code: String): String {
+        val digits = code.trim().filter { it.isDigit() }
+        if (digits.isEmpty()) return ""
+        val candidate = if (SCALE_EAN13_REGEX.matches(digits)) {
+            digits.substring(2, 7)
+        } else {
+            digits.takeLast(5).padStart(5, '0')
+        }
+        if (candidate == "00000" || candidate.length != 5) return ""
+        return candidate
+    }
+
+    fun parse(barcode: String): ScaleBarcodeData? {
+        val clean = barcode.trim()
+        if (!SCALE_EAN13_REGEX.matches(clean)) return null
+        val digits = clean.map { it.digitToInt() }
+        val sum = digits.take(12).mapIndexed { idx, d ->
+            d * if (idx % 2 == 0) 1 else 3
+        }.sum()
+        val expectedCheck = (10 - (sum % 10)) % 10
+        if (expectedCheck != digits[12]) return null
+
+        val amountInt = clean.substring(7, 12).toIntOrNull() ?: return null
+        if (amountInt <= 0) return null
+
+        val pluCode = clean.substring(2, 7)
+        val formatted = String.format(Locale.US, "%d.00", amountInt)
+        return ScaleBarcodeData(
+            pluCode = pluCode,
+            calculatedSubtotal = amountInt.toDouble(),
+            calculatedSubtotalFormatted = formatted
+        )
+    }
+}
 
 data class BulkProductRow(
     val name: String,
     val price: String,
+    val itemType: String = "unit",
     val barcode: String? = null,
     val trackStock: Boolean = false,
     val stockQuantity: Int = 0
@@ -366,15 +418,28 @@ class EspressoManager(
                     }
                 }
 
+                val normalizedBarcode = row.barcode?.trim()?.ifBlank { null }?.let { rawCode ->
+                    if (row.itemType == "weighted") {
+                        ScaleBarcodeParser.normalizePlu(rawCode).ifBlank { null }
+                    } else {
+                        rawCode
+                    }
+                }
+                if (row.itemType == "weighted" && normalizedBarcode.isNullOrBlank()) {
+                    failed.add(index to "Código PLU numérico válido obligatorio para balanza")
+                    return@forEach
+                }
+
                 val request = CreateCatalogItemRequest(
                     categoryId = cleanCategoryId,
                     name = cleanName,
                     price = formattedPrice,
-                    barcode = row.barcode?.trim()?.ifBlank { null },
+                    itemType = row.itemType,
+                    barcode = normalizedBarcode,
                     isGeneric = false,
                     genericIcon = null,
-                    trackStock = row.trackStock,
-                    stockQuantity = row.stockQuantity.coerceAtLeast(0),
+                    trackStock = if (row.itemType == "weighted") false else row.trackStock,
+                    stockQuantity = if (row.itemType == "weighted") 0 else row.stockQuantity.coerceAtLeast(0),
                     status = "draft"
                 )
 
@@ -508,25 +573,60 @@ class EspressoManager(
         _pendingLookup.value = null
     }
 
-    fun addToCart(item: CatalogItemDto, fromScan: Boolean = false) {
+    fun addToCart(
+        item: CatalogItemDto,
+        fromScan: Boolean = false,
+        calculatedSubtotal: Double? = null
+    ) {
         val current = _cart.value.toMutableList()
-        val index = current.indexOfFirst { it.item.id == item.id }
-        if (index >= 0) {
-            val line = current[index]
-            current[index] = line.copy(quantity = line.quantity + 1)
+        val isWeightedLine = item.itemType == "weighted" || calculatedSubtotal != null
+        if (isWeightedLine) {
+            if (calculatedSubtotal == null || calculatedSubtotal <= 0.0) {
+                _statusMessage.value = "Los productos de balanza requieren escanear una etiqueta con importe válido."
+                return
+            }
+            current.add(
+                EspressoCartLine(
+                    item = item,
+                    quantity = 1,
+                    calculatedSubtotal = calculatedSubtotal
+                )
+            )
         } else {
-            current.add(EspressoCartLine(item = item, quantity = 1))
+            val index = current.indexOfFirst { it.item.id == item.id && !it.isWeighted }
+            if (index >= 0) {
+                val line = current[index]
+                current[index] = line.copy(quantity = line.quantity + 1)
+            } else {
+                current.add(EspressoCartLine(item = item, quantity = 1))
+            }
         }
         _cart.value = current
-        _statusMessage.value = "Agregado: ${item.name}"
+        val displayPrice = if (isWeightedLine && calculatedSubtotal != null) {
+            String.format(Locale.US, "%.2f", calculatedSubtotal)
+        } else {
+            item.price
+        }
+        _statusMessage.value = if (isWeightedLine) {
+            "Agregado (Balanza): ${item.name} ($$displayPrice)"
+        } else {
+            "Agregado: ${item.name}"
+        }
 
         if (fromScan) {
-            val quantity = current.find { it.item.id == item.id }?.quantity ?: 1
+            val quantity = if (isWeightedLine) {
+                current.count { it.item.id == item.id }
+            } else {
+                current.find { it.item.id == item.id && !it.isWeighted }?.quantity ?: 1
+            }
+            val categoryName = _categories.value.find { it.id == item.categoryId }?.name
             _lastScannedProduct.value = ScannedProductFeedback(
                 productName = item.name,
-                price = item.price,
+                price = displayPrice,
                 quantityInCart = quantity,
-                barcode = item.barcode
+                barcode = item.barcode,
+                categoryName = categoryName,
+                isWeighted = isWeightedLine
             )
         }
     }
@@ -535,11 +635,18 @@ class EspressoManager(
         _lastScannedProduct.value = null
     }
 
-    fun updateQuantity(itemId: String, delta: Int) {
+    fun updateQuantity(targetId: String, delta: Int) {
         val current = _cart.value.toMutableList()
-        val index = current.indexOfFirst { it.item.id == itemId }
+        val index = current.indexOfFirst { it.lineId == targetId || it.item.id == targetId }
         if (index >= 0) {
             val line = current[index]
+            if (line.isWeighted) {
+                if (delta < 0) {
+                    current.removeAt(index)
+                    _cart.value = current
+                }
+                return
+            }
             val newQty = line.quantity + delta
             if (newQty <= 0) {
                 current.removeAt(index)
@@ -559,8 +666,63 @@ class EspressoManager(
         if (clean.isBlank()) return
         touchStaffActivity()
 
-        // 1. Fast in-memory lookup (<150ms)
-        val localItem = _items.value.find { it.barcode == clean && it.status == "active" }
+        // 0. Check if barcode is an in-store EAN-13 scale label (prefix 20..29)
+        if (ScaleBarcodeParser.isScalePrefix(clean)) {
+            val parsedScale = ScaleBarcodeParser.parse(clean)
+            if (parsedScale == null) {
+                _statusMessage.value = "Etiqueta de balanza inválida o con importe cero."
+                return
+            }
+            val localWeighted = _items.value.find {
+                it.status == "active" &&
+                    it.itemType == "weighted" &&
+                    it.barcode != null &&
+                    ScaleBarcodeParser.normalizePlu(it.barcode) == parsedScale.pluCode
+            }
+            if (localWeighted != null) {
+                addToCart(
+                    item = localWeighted,
+                    fromScan = true,
+                    calculatedSubtotal = parsedScale.calculatedSubtotal
+                )
+                return
+            }
+
+            _isLoading.value = true
+            try {
+                val res = api.lookupBarcode(tenantId, clean)
+                if (res.isSuccessful && res.body() != null) {
+                    val body = res.body()!!
+                    val item = body.item
+                    if (item != null && item.itemType == "weighted") {
+                        if (item.status == "active") {
+                            addToCart(
+                                item = item,
+                                fromScan = true,
+                                calculatedSubtotal = parsedScale.calculatedSubtotal
+                            )
+                        } else {
+                            _statusMessage.value = "El producto de balanza está en borrador o inactivo."
+                        }
+                    } else {
+                        _pendingLookup.value = Pair(clean, null)
+                    }
+                } else {
+                    _pendingLookup.value = Pair(clean, null)
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Scale barcode lookup failed", e)
+                _pendingLookup.value = Pair(clean, null)
+            } finally {
+                _isLoading.value = false
+            }
+            return
+        }
+
+        // 1. Fast in-memory lookup (<150ms) for standard unit barcodes
+        val localItem = _items.value.find {
+            it.barcode == clean && it.status == "active" && it.itemType != "weighted"
+        }
         if (localItem != null) {
             addToCart(localItem, fromScan = true)
             return
@@ -654,6 +816,7 @@ class EspressoManager(
         price: String,
         categoryId: String,
         barcode: String?,
+        itemType: String = "unit",
         isGeneric: Boolean = false,
         genericIcon: String? = null,
         trackStock: Boolean = false,
@@ -678,15 +841,27 @@ class EspressoManager(
                 _statusMessage.value = "La categoría es obligatoria."
                 return false
             }
+            val normalizedBarcode = barcode?.trim()?.ifBlank { null }?.let { rawCode ->
+                if (itemType == "weighted") {
+                    ScaleBarcodeParser.normalizePlu(rawCode).ifBlank { null }
+                } else {
+                    rawCode
+                }
+            }
+            if (itemType == "weighted" && normalizedBarcode.isNullOrBlank()) {
+                _statusMessage.value = "El Código PLU numérico (1 a 5 dígitos, distinto de 00000) es obligatorio para productos de balanza."
+                return false
+            }
             val request = CreateCatalogItemRequest(
                 categoryId = cleanCategoryId,
                 name = cleanName,
                 price = formattedPrice,
-                barcode = barcode?.trim()?.ifBlank { null },
-                isGeneric = isGeneric,
-                genericIcon = genericIcon,
-                trackStock = trackStock,
-                stockQuantity = stockQuantity,
+                itemType = itemType,
+                barcode = normalizedBarcode,
+                isGeneric = if (itemType == "weighted") false else isGeneric,
+                genericIcon = if (itemType == "weighted") null else genericIcon,
+                trackStock = if (itemType == "weighted") false else trackStock,
+                stockQuantity = if (itemType == "weighted") 0 else stockQuantity,
                 status = "draft"
             )
 
@@ -766,7 +941,10 @@ class EspressoManager(
     ): Boolean {
         if (_cart.value.isEmpty()) return false
         _isLoading.value = true
-        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val itemsList = _cart.value.map { line ->
+            val key = if (line.isWeighted) "${line.item.id}@${line.calculatedSubtotalFormatted}" else line.item.id
+            key to line.quantity
+        }
         val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, paymentMethod, customerName)
         val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
         val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
@@ -777,7 +955,9 @@ class EspressoManager(
                     DirectOrderItemRequest(
                         kind = "item",
                         resourceId = line.item.id,
-                        quantity = line.quantity
+                        itemType = if (line.isWeighted) "weighted" else "unit",
+                        quantity = if (line.isWeighted) 1 else line.quantity,
+                        calculatedSubtotal = line.calculatedSubtotalFormatted
                     )
                 },
                 customer = DirectOrderCustomerRequest(name = customerName),
@@ -807,8 +987,9 @@ class EspressoManager(
                                 id = line.item.id,
                                 name = line.item.name,
                                 quantity = line.quantity,
-                                unitPrice = line.item.price.toDoubleOrNull() ?: 0.0,
-                                lineTotal = line.lineTotal
+                                unitPrice = if (line.isWeighted) line.lineTotal else (line.item.price.toDoubleOrNull() ?: 0.0),
+                                lineTotal = line.lineTotal,
+                                itemType = if (line.isWeighted) "weighted" else "unit"
                             )
                         },
                         summary = TicketSummary(
@@ -852,7 +1033,8 @@ class EspressoManager(
                 items = _cart.value.map { line ->
                     KioskPaymentItemRequest(
                         catalogItemId = line.item.id,
-                        quantity = line.quantity
+                        quantity = if (line.isWeighted) 1 else line.quantity,
+                        calculatedSubtotal = line.calculatedSubtotalFormatted
                     )
                 },
                 discountCode = clean,
@@ -910,7 +1092,10 @@ class EspressoManager(
     ): KioskPaymentSessionResponse? {
         if (_cart.value.isEmpty()) return null
         _isLoading.value = true
-        val itemsList = _cart.value.map { it.item.id to it.quantity }
+        val itemsList = _cart.value.map { line ->
+            val key = if (line.isWeighted) "${line.item.id}@${line.calculatedSubtotalFormatted}" else line.item.id
+            key to line.quantity
+        }
         val cartHash = CheckoutAttemptStore.computeCartHash(itemsList, "qr", customerName)
         val attempt = attemptStore?.getOrStartAttempt(tenantId, cartHash)
         val idempotencyKey = attempt?.idempotencyKey ?: UUID.randomUUID().toString()
@@ -920,7 +1105,8 @@ class EspressoManager(
                 items = _cart.value.map { line ->
                     KioskPaymentItemRequest(
                         catalogItemId = line.item.id,
-                        quantity = line.quantity
+                        quantity = if (line.isWeighted) 1 else line.quantity,
+                        calculatedSubtotal = line.calculatedSubtotalFormatted
                     )
                 },
                 customer = KioskPaymentCustomerRequest(name = customerName),
@@ -978,8 +1164,9 @@ class EspressoManager(
                 id = line.item.id,
                 name = line.item.name,
                 quantity = line.quantity,
-                unitPrice = line.item.price.toDoubleOrNull() ?: 0.0,
-                lineTotal = line.lineTotal
+                unitPrice = if (line.isWeighted) line.lineTotal else (line.item.price.toDoubleOrNull() ?: 0.0),
+                lineTotal = line.lineTotal,
+                itemType = if (line.isWeighted) "weighted" else "unit"
             )
         }
         val currentTotal = statusResponse.total?.toDoubleOrNull() ?: totalAmount

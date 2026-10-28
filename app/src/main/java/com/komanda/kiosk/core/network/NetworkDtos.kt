@@ -6,8 +6,10 @@ import com.squareup.moshi.JsonClass
 data class DirectOrderItemRequest(
     val kind: String = "item",
     val resourceId: String,
+    val itemType: String? = null,
     val quantity: Int = 1,
-    val note: String? = null
+    val note: String? = null,
+    val calculatedSubtotal: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -30,6 +32,7 @@ data class CreateDirectOrderRequest(
 data class OrderLineDto(
     val id: String = "",
     val name: String = "",
+    val itemType: String = "unit",
     val quantity: Int = 1,
     val unitPrice: String = "0.00",
     val lineTotal: String = "0.00"
@@ -68,6 +71,7 @@ data class CatalogItemDto(
     val description: String? = null,
     val price: String,
     val categoryId: String? = null,
+    val itemType: String = "unit",
     val barcode: String? = null,
     val isGeneric: Boolean = false,
     val genericIcon: String? = null,
@@ -90,6 +94,7 @@ data class CreateCatalogItemRequest(
     val name: String,
     val price: String,
     val currency: String = "ARS",
+    val itemType: String = "unit",
     val barcode: String? = null,
     val isGeneric: Boolean = false,
     val genericIcon: String? = null,
@@ -100,6 +105,8 @@ data class CreateCatalogItemRequest(
 
 @JsonClass(generateAdapter = true)
 data class UpdateCatalogItemRequest(
+    val itemType: String? = null,
+    val barcode: String? = null,
     val status: String? = null,
     val version: Int? = null
 )

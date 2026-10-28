@@ -70,6 +70,7 @@ private data class EditableProductRow(
     val localId: String = UUID.randomUUID().toString(),
     val name: String = "",
     val price: String = "",
+    val itemType: String = "unit",
     val barcode: String = "",
     val trackStock: Boolean = false,
     val stockQuantity: String = ""
@@ -388,9 +389,10 @@ fun BackofficeProductsView(
                                     BulkProductRow(
                                         name = editable.name,
                                         price = editable.price,
+                                        itemType = editable.itemType,
                                         barcode = editable.barcode,
-                                        trackStock = editable.trackStock,
-                                        stockQuantity = editable.stockQuantity.toIntOrNull() ?: 0
+                                        trackStock = if (editable.itemType == "weighted") false else editable.trackStock,
+                                        stockQuantity = if (editable.itemType == "weighted") 0 else (editable.stockQuantity.toIntOrNull() ?: 0)
                                     )
                                 }
                                 val result = espressoManager.bulkCreateItems(bulkRows, categoryId)
@@ -431,7 +433,17 @@ fun BackofficeProductsView(
             onBarcodeScanned = { code ->
                 val rowIndex = rows.indexOfFirst { it.localId == scanningRow.localId }
                 if (rowIndex >= 0) {
-                    rows[rowIndex] = rows[rowIndex].copy(barcode = code.trim())
+                    val trimmedCode = code.trim()
+                    val parsedScale = ScaleBarcodeParser.parse(trimmedCode)
+                    if (parsedScale != null) {
+                        rows[rowIndex] = rows[rowIndex].copy(
+                            itemType = "weighted",
+                            barcode = parsedScale.pluCode,
+                            trackStock = false
+                        )
+                    } else {
+                        rows[rowIndex] = rows[rowIndex].copy(barcode = trimmedCode)
+                    }
                 }
                 scanningRowId = null
             }
@@ -465,12 +477,33 @@ private fun BulkProductRowEditor(
                 Text("Fila ${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Zinc300)
                 Spacer(modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Controlar stock", fontSize = 12.sp, color = Zinc400)
+                    Text("Balanza (PLU)", fontSize = 12.sp, color = Zinc400)
                     Spacer(modifier = Modifier.width(6.dp))
                     Switch(
-                        checked = row.trackStock,
-                        onCheckedChange = { onChange(row.copy(trackStock = it)) }
+                        checked = row.itemType == "weighted",
+                        onCheckedChange = { isWeighted ->
+                            onChange(
+                                row.copy(
+                                    itemType = if (isWeighted) "weighted" else "unit",
+                                    trackStock = if (isWeighted) false else row.trackStock,
+                                    barcode = if (isWeighted && row.barcode.isNotBlank()) {
+                                        ScaleBarcodeParser.normalizePlu(row.barcode).ifBlank { row.barcode }
+                                    } else {
+                                        row.barcode
+                                    }
+                                )
+                            )
+                        }
                     )
+                    if (row.itemType == "unit") {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Controlar stock", fontSize = 12.sp, color = Zinc400)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Switch(
+                            checked = row.trackStock,
+                            onCheckedChange = { onChange(row.copy(trackStock = it)) }
+                        )
+                    }
                     Spacer(modifier = Modifier.width(6.dp))
                     IconButton(
                         onClick = onRemove,
@@ -500,7 +533,7 @@ private fun BulkProductRowEditor(
                 OutlinedTextField(
                     value = row.price,
                     onValueChange = { onChange(row.copy(price = it)) },
-                    label = { Text("Precio") },
+                    label = { Text(if (row.itemType == "weighted") "Precio ref. / kg" else "Precio") },
                     singleLine = true,
                     colors = darkFieldColors(),
                     modifier = Modifier.weight(1f)
@@ -508,7 +541,7 @@ private fun BulkProductRowEditor(
                 OutlinedTextField(
                     value = row.barcode,
                     onValueChange = { onChange(row.copy(barcode = it)) },
-                    label = { Text("Código (opcional)") },
+                    label = { Text(if (row.itemType == "weighted") "PLU (5 dígitos)" else "Código (opcional)") },
                     singleLine = true,
                     colors = darkFieldColors(),
                     trailingIcon = {
@@ -522,7 +555,7 @@ private fun BulkProductRowEditor(
                     },
                     modifier = Modifier.weight(1.2f)
                 )
-                if (row.trackStock) {
+                if (row.itemType == "unit" && row.trackStock) {
                     OutlinedTextField(
                         value = row.stockQuantity,
                         onValueChange = { onChange(row.copy(stockQuantity = it)) },

@@ -5,7 +5,8 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class KioskPaymentItemRequest(
     val catalogItemId: String,
-    val quantity: Int
+    val quantity: Int,
+    val calculatedSubtotal: String? = null
 )
 
 @JsonClass(generateAdapter = true)

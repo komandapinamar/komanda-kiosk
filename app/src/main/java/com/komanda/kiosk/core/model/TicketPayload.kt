@@ -18,6 +18,7 @@ data class TicketItem(
     val quantity: Int,
     val unitPrice: Double,
     val lineTotal: Double,
+    val itemType: String = "unit",
     val note: String? = null,
     val options: List<TicketItemOption> = emptyList()
 )

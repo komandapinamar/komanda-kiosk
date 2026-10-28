@@ -274,7 +274,7 @@ fun EspressoKioskScreen(
                 categories = categories,
                 errorMessage = quickAddError,
                 isLoading = isLoading,
-                onSave = { name, price, categoryId, newCategoryName, code, isGeneric, icon, trackStock, stock ->
+                onSave = { name, price, categoryId, newCategoryName, code, itemType, isGeneric, icon, trackStock, stock ->
                     coroutineScope.launch {
                         quickAddError = null
                         var finalCatId = categoryId
@@ -302,6 +302,7 @@ fun EspressoKioskScreen(
                             price = price,
                             categoryId = finalCatId,
                             barcode = code,
+                            itemType = itemType,
                             isGeneric = isGeneric,
                             genericIcon = icon,
                             trackStock = trackStock,
@@ -649,8 +650,18 @@ fun EspressoKioskScreen(
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                             Spacer(modifier = Modifier.height(10.dp))
+                                            val feedbackDetail = buildString {
+                                                append("$${scanned.price}")
+                                                if (scanned.isWeighted) {
+                                                    append("  •  Balanza")
+                                                }
+                                                if (!scanned.categoryName.isNullOrBlank()) {
+                                                    append("  •  ${scanned.categoryName}")
+                                                }
+                                                append("  •  En el pedido: ${scanned.quantityInCart}")
+                                            }
                                             Text(
-                                                text = "$${scanned.price}  •  En el pedido: ${scanned.quantityInCart}",
+                                                text = feedbackDetail,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = KomandaTokens.AccentTertiary
@@ -752,9 +763,10 @@ fun EspressoKioskScreen(
 
                         val filteredItems = items.filter { item ->
                             val isPublished = item.status == "active"
+                            val isStandardUnit = item.itemType == "unit"
                             val matchCat = selectedCategory == null || item.categoryId == selectedCategory
                             val matchQuery = searchQuery.isBlank() || item.name.contains(searchQuery, ignoreCase = true)
-                            isPublished && matchCat && matchQuery
+                            isPublished && isStandardUnit && matchCat && matchQuery
                         }
 
                         if (filteredItems.isEmpty()) {
@@ -904,7 +916,7 @@ fun EspressoKioskScreen(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(cart) { line ->
+                            items(cart, key = { it.lineId }) { line ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -914,14 +926,34 @@ fun EspressoKioskScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = line.item.name,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White,
-                                            fontSize = 19.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = line.item.name,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White,
+                                                fontSize = 19.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (line.isWeighted) {
+                                                Surface(
+                                                    color = KomandaTokens.AccentTertiary.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Balanza",
+                                                        color = KomandaTokens.AccentTertiary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "$${String.format(java.util.Locale.US, "%.2f", line.lineTotal)}",
@@ -936,7 +968,7 @@ fun EspressoKioskScreen(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         IconButton(
-                                            onClick = { espressoManager.updateQuantity(line.item.id, -1) },
+                                            onClick = { espressoManager.updateQuantity(line.lineId, -1) },
                                             modifier = Modifier
                                                 .size(44.dp)
                                                 .background(Zinc800, CircleShape)
@@ -952,13 +984,15 @@ fun EspressoKioskScreen(
                                             modifier = Modifier.padding(horizontal = 4.dp)
                                         )
 
-                                        IconButton(
-                                            onClick = { espressoManager.updateQuantity(line.item.id, 1) },
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .background(Zinc800, CircleShape)
-                                        ) {
-                                            Icon(Icons.Default.Add, contentDescription = "Más", tint = Color.White, modifier = Modifier.size(22.dp))
+                                        if (!line.isWeighted) {
+                                            IconButton(
+                                                onClick = { espressoManager.updateQuantity(line.lineId, 1) },
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .background(Zinc800, CircleShape)
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = "Más", tint = Color.White, modifier = Modifier.size(22.dp))
+                                            }
                                         }
                                     }
                                 }
