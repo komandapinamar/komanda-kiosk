@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
@@ -334,6 +335,7 @@ private fun CameraBarcodePreview(
     }
 }
 
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 private fun decodeBarcode(image: ImageProxy, reader: MultiFormatReader): String? {
     val mediaImage = image.image ?: return null
     val plane = mediaImage.planes.firstOrNull() ?: return null

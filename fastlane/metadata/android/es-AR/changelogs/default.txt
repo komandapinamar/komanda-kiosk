@@ -1,0 +1,6 @@
+Primera versión publicada.
+• Autoservicio con escaneo de códigos de barras.
+• Carrito y confirmación de pedido.
+• Cobro con medios de pago del comercio, incluido QR.
+• Ticket térmico por USB, Bluetooth y red.
+• Modo kiosco bloqueado.

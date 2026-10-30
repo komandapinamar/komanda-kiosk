@@ -49,6 +49,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.komanda.kiosk.BuildConfig
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Red400
 import com.komanda.kiosk.ui.theme.Zinc400
@@ -301,12 +302,15 @@ fun LoginScreen(
                                             cursorColor = KomandaTokens.AccentTertiary
                                         )
                                     )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        TextButton(onClick = { tempServerUrl = "https://throwing-dust-public.ngrok-free.dev" }) {
-                                            Text("127.0.0.1 (USB)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
-                                        }
-                                        TextButton(onClick = { tempServerUrl = "http://10.0.2.2:3000" }) {
-                                            Text("10.0.2.2 (AVD)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
+                                    // Atajos de desarrollo: nunca se muestran en el build de release.
+                                    if (BuildConfig.DEBUG) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            TextButton(onClick = { tempServerUrl = "http://127.0.0.1:3000" }) {
+                                                Text("127.0.0.1 (USB)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
+                                            }
+                                            TextButton(onClick = { tempServerUrl = "http://10.0.2.2:3000" }) {
+                                                Text("10.0.2.2 (AVD)", fontSize = 11.sp, color = KomandaTokens.AccentTertiary)
+                                            }
                                         }
                                     }
                                 }

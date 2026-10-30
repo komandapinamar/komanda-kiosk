@@ -1,0 +1,24 @@
+Komanda Kiosk convierte una tablet o terminal en un punto de autoservicio para tu local.
+
+Tus clientes escanean productos, arman el pedido, eligen cómo pagar y retiran su ticket sin pasar por el mostrador. El personal administra el catálogo desde el panel web de Komanda.
+
+QUÉ PODÉS HACER
+
+• Escanear códigos de barras con la cámara o con un lector conectado.
+• Armar el carrito y confirmar el pedido en pocos toques.
+• Cobrar con los medios de pago habilitados por tu comercio, incluido QR.
+• Imprimir el ticket en impresora térmica ESC/POS por USB, Bluetooth o red local.
+• Bloquear la terminal en modo kiosco para que el cliente no salga de la app.
+• Consultar el resumen de ventas del turno.
+
+CÓMO FUNCIONA
+
+Komanda Kiosk se conecta a tu cuenta de Komanda. El alta del comercio, el catálogo y los precios se configuran desde el panel web. La app requiere credenciales de operador habilitadas por tu comercio para el primer inicio de sesión.
+
+PERMISOS
+
+La app usa la cámara para leer códigos de barras y Bluetooth/USB para las impresoras térmicas. No accede a contactos, ubicación ni archivos personales.
+
+SOPORTE
+
+¿Problemas de acceso o configuración? Escribinos desde el panel de Komanda o a soporte@komanda.ar.

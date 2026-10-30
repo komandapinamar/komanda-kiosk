@@ -45,6 +45,7 @@ securityCrypto = "1.1.0-alpha06"
 material = "1.4.0"
 escposPrinter = "3.3.0"
 zxing = "3.5.3"
+desugarJdkLibs = "2.1.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -100,6 +101,7 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 escpos-thermalprinter = { module = "com.github.DantSu:ESCPOS-ThermalPrinter-Android", version.ref = "escposPrinter" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
