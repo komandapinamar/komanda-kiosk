@@ -107,8 +107,9 @@ fun EspressoQuickAddDialog(
 
     BasicAlertDialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {

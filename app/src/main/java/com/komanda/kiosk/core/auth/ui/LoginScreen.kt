@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -84,7 +85,8 @@ fun LoginScreen(
                 .widthIn(max = 440.dp)
                 .fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush)
         ) {
             Column(
                 modifier = Modifier
@@ -95,10 +97,20 @@ fun LoginScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
+                    text = "KOMANDA",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.14.em,
+                    color = Zinc400
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
                     text = "Komanda Kiosk",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Normal,
-                        letterSpacing = (-0.02).em
+                        letterSpacing = (-0.04).em
                     ),
                     color = Color.White
                 )
@@ -116,15 +128,16 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .padding(bottom = 16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0x33F87171)
+                            containerColor = KomandaTokens.ErrorBg
                         ),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Red400.copy(alpha = 0.35f))
                     ) {
                         Text(
                             text = errorMessage,
                             color = Red400,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier.padding(14.dp)
                         )
                     }
                 }
@@ -134,27 +147,33 @@ fun LoginScreen(
                     onValueChange = { email = it },
                     label = { Text("Correo electrónico") },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = KomandaTokens.AccentTertiary,
+                        focusedContainerColor = KomandaTokens.SurfaceDeep,
+                        unfocusedContainerColor = KomandaTokens.SurfaceDeep,
+                        focusedBorderColor = KomandaTokens.AccentTertiary.copy(alpha = 0.45f),
                         unfocusedBorderColor = Zinc800,
                         focusedLabelColor = KomandaTokens.AccentTertiary,
                         unfocusedLabelColor = Zinc400,
-                        cursorColor = KomandaTokens.AccentTertiary
+                        cursorColor = KomandaTokens.AccentTertiary,
+                        focusedTextColor = KomandaTokens.TextPrimary,
+                        unfocusedTextColor = KomandaTokens.TextPrimary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Contraseña") },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
@@ -169,11 +188,15 @@ fun LoginScreen(
                         }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = KomandaTokens.AccentTertiary,
+                        focusedContainerColor = KomandaTokens.SurfaceDeep,
+                        unfocusedContainerColor = KomandaTokens.SurfaceDeep,
+                        focusedBorderColor = KomandaTokens.AccentTertiary.copy(alpha = 0.45f),
                         unfocusedBorderColor = Zinc800,
                         focusedLabelColor = KomandaTokens.AccentTertiary,
                         unfocusedLabelColor = Zinc400,
-                        cursorColor = KomandaTokens.AccentTertiary
+                        cursorColor = KomandaTokens.AccentTertiary,
+                        focusedTextColor = KomandaTokens.TextPrimary,
+                        unfocusedTextColor = KomandaTokens.TextPrimary
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -190,9 +213,9 @@ fun LoginScreen(
                         containerColor = KomandaTokens.AccentTertiary,
                         contentColor = KomandaTokens.AccentPrimary,
                         disabledContainerColor = Zinc800,
-                        disabledContentColor = Zinc400
+                        disabledContentColor = Zinc400.copy(alpha = 0.5f)
                     ),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = CircleShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -200,14 +223,14 @@ fun LoginScreen(
                     if (isLoading) {
                         CircularProgressIndicator(
                             color = Zinc950,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = "Iniciar Sesión",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 15.sp
                         )
                     }
                 }
@@ -217,9 +240,9 @@ fun LoginScreen(
                 // Tarjeta informativa: administración web
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Zinc950),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, Zinc800)
+                    colors = CardDefaults.cardColors(containerColor = KomandaTokens.SurfaceDeep),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, KomandaTokens.Border)
                 ) {
                     Column(
                         modifier = Modifier

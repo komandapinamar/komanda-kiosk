@@ -188,10 +188,14 @@ fun BackofficeScreen(
                 actions = {
                     Button(
                         onClick = onBackToKiosk,
-                        colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = KomandaTokens.SurfacePill,
+                            contentColor = KomandaTokens.TextPrimary
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
+                        shape = CircleShape
                     ) {
-                        Text("Volver al Kiosk", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text("Volver al Kiosk", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Zinc950)
@@ -313,9 +317,9 @@ private fun BackofficeCashView(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFF10B981).copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                    .border(1.25.dp, KomandaTokens.PrismRingBrush, RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = Zinc900),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Row(
@@ -333,7 +337,7 @@ private fun BackofficeCashView(
                             Text(
                                 text = "Caja Abierta",
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Medium,
                                 color = Color(0xFF10B981)
                             )
                         }
@@ -341,12 +345,13 @@ private fun BackofficeCashView(
                         Button(
                             onClick = onCloseShift,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Zinc800,
-                                contentColor = Color.White
+                                containerColor = KomandaTokens.SurfacePill,
+                                contentColor = KomandaTokens.TextPrimary
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
+                            shape = CircleShape
                         ) {
-                            Text("Cerrar Caja y Arqueo", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Cerrar Caja y Arqueo", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         }
                     }
 
@@ -469,9 +474,9 @@ private fun BackofficeCashView(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+                    .border(1.25.dp, KomandaTokens.PrismRingBrush, RoundedCornerShape(24.dp)),
                 colors = CardDefaults.cardColors(containerColor = Zinc900),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(24.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -482,7 +487,8 @@ private fun BackofficeCashView(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = Zinc800,
+                        color = KomandaTokens.SurfaceDeep,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
                         modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -498,8 +504,8 @@ private fun BackofficeCashView(
                     Text(
                         text = "Caja Cerrada",
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Medium,
+                        color = KomandaTokens.TextPrimary
                     )
 
                     Text(
@@ -519,13 +525,13 @@ private fun BackofficeCashView(
                             containerColor = KomandaTokens.AccentTertiary,
                             contentColor = KomandaTokens.AccentPrimary
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = CircleShape,
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(color = Zinc950, modifier = Modifier.size(18.dp))
                         } else {
-                            Text("Abrir Turno de Caja", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Abrir Turno de Caja", fontWeight = FontWeight.Medium, fontSize = 15.sp)
                         }
                     }
                 }
@@ -571,12 +577,12 @@ private fun MetricBox(
     value: String,
     subtext: String,
     modifier: Modifier = Modifier,
-    highlightColor: Color = Color.White
+    highlightColor: Color = KomandaTokens.TextPrimary
 ) {
     Card(
-        modifier = modifier.border(1.dp, Zinc800, RoundedCornerShape(8.dp)),
-        colors = CardDefaults.cardColors(containerColor = Zinc950),
-        shape = RoundedCornerShape(8.dp)
+        modifier = modifier.border(1.dp, KomandaTokens.Border, RoundedCornerShape(18.dp)),
+        colors = CardDefaults.cardColors(containerColor = KomandaTokens.SurfaceDeep),
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = label, fontSize = 12.sp, color = Zinc400, fontWeight = FontWeight.Medium)

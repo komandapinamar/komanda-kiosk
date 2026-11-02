@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
@@ -43,20 +44,21 @@ fun EspressoOpenShiftDialog(
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(28.dp)
                     .fillMaxWidth()
             ) {
                 Text(
                     text = "Abrir caja",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -73,6 +75,7 @@ fun EspressoOpenShiftDialog(
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
+                    shape = RoundedCornerShape(16.dp),
                     label = { Text("Monto inicial ($)") },
                     placeholder = { Text("0.00") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -95,9 +98,9 @@ fun EspressoOpenShiftDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = CircleShape
                     ) {
-                        Text("Abrir caja y comenzar", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Abrir caja y comenzar", fontWeight = FontWeight.Medium, fontSize = 15.sp)
                     }
 
                     OutlinedButton(
@@ -105,7 +108,7 @@ fun EspressoOpenShiftDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = CircleShape
                     ) {
                         Text("Saltar (abrir con $0)", color = MaterialTheme.colorScheme.onSurface)
                     }

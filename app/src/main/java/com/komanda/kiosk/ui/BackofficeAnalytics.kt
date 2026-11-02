@@ -79,12 +79,12 @@ fun BackofficeAnalyticsSection(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+            .border(1.25.dp, KomandaTokens.PrismRingBrush, RoundedCornerShape(24.dp)),
         colors = CardDefaults.cardColors(containerColor = Zinc900),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(24.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
@@ -96,8 +96,8 @@ fun BackofficeAnalyticsSection(
                     Text(
                         text = "Analíticas del negocio",
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Medium,
+                        color = KomandaTokens.TextPrimary
                     )
                     Text(
                         text = "Mismas métricas del Backoffice Komanda (solo Propietario)",
@@ -122,19 +122,20 @@ fun BackofficeAnalyticsSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Período:", fontSize = 12.sp, color = Zinc400, fontWeight = FontWeight.SemiBold)
+                Text("Período:", fontSize = 12.sp, color = Zinc400, fontWeight = FontWeight.Medium)
                 AnalyticsRangePreset.values().forEach { option ->
                     val selected = option == preset
                     Button(
                         onClick = { onPresetChange(option) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selected) KomandaTokens.AccentTertiary else Zinc800,
+                            containerColor = if (selected) KomandaTokens.AccentTertiary else KomandaTokens.SurfacePill,
                             contentColor = if (selected) KomandaTokens.AccentPrimary else Zinc300
                         ),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
-                        Text(option.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(option.label, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }

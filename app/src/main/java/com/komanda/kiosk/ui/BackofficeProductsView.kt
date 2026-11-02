@@ -114,9 +114,9 @@ fun BackofficeProductsView(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+                .border(1.25.dp, KomandaTokens.PrismRingBrush, RoundedCornerShape(24.dp)),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,8 +130,8 @@ fun BackofficeProductsView(
                         Text(
                             text = "Productos",
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontWeight = FontWeight.Medium,
+                            color = KomandaTokens.TextPrimary
                         )
                         Text(
                             text = "La carga se guarda como borrador y se publica en un segundo paso. Solo Propietario.",
@@ -145,7 +145,7 @@ fun BackofficeProductsView(
 
         if (!statusMessage.isNullOrBlank()) {
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = KomandaTokens.AccentTertiary.copy(alpha = 0.12f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.4f)),
                 modifier = Modifier.fillMaxWidth()
@@ -164,9 +164,9 @@ fun BackofficeProductsView(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+                .border(1.dp, KomandaTokens.Border, RoundedCornerShape(24.dp)),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
@@ -178,8 +178,8 @@ fun BackofficeProductsView(
                         Text(
                             text = "Borradores pendientes",
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontWeight = FontWeight.Medium,
+                            color = KomandaTokens.TextPrimary
                         )
                         Text(
                             text = "${draftItems.size} productos · ${draftCategories.size} categorías sin publicar",
@@ -193,16 +193,16 @@ fun BackofficeProductsView(
                         },
                         enabled = !isLoading && (draftItems.isNotEmpty() || draftCategories.isNotEmpty()),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Emerald600,
-                            contentColor = Zinc950
+                            containerColor = KomandaTokens.AccentTertiary,
+                            contentColor = KomandaTokens.AccentPrimary
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(color = Zinc950, modifier = Modifier.size(18.dp))
                         } else {
-                            Text("Publicar borradores", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Publicar borradores", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         }
                     }
                 }
@@ -263,12 +263,12 @@ fun BackofficeProductsView(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+                .border(1.dp, KomandaTokens.Border, RoundedCornerShape(24.dp)),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Categoría destino", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Categoría destino", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = KomandaTokens.TextPrimary)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -307,9 +307,9 @@ fun BackofficeProductsView(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Zinc800, RoundedCornerShape(12.dp)),
+                .border(1.dp, KomandaTokens.Border, RoundedCornerShape(24.dp)),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
@@ -318,18 +318,19 @@ fun BackofficeProductsView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Productos a cargar (${rows.size})", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Productos a cargar (${rows.size})", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = KomandaTokens.TextPrimary)
                         Text("Completá una fila por producto. Se guardan como borrador hasta publicarlos.", fontSize = 12.sp, color = Zinc400)
                     }
                     Button(
                         onClick = { rows.add(EditableProductRow()) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.SurfacePill, contentColor = KomandaTokens.TextPrimary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Agregar fila", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Agregar fila", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
@@ -412,13 +413,13 @@ fun BackofficeProductsView(
                             containerColor = KomandaTokens.AccentTertiary,
                             contentColor = KomandaTokens.AccentPrimary
                         ),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = CircleShape,
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(color = Zinc950, modifier = Modifier.size(18.dp))
                         } else {
-                            Text("Cargar ${rows.size} producto(s)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Cargar ${rows.size} producto(s)", fontWeight = FontWeight.Medium, fontSize = 15.sp)
                         }
                     }
                 }

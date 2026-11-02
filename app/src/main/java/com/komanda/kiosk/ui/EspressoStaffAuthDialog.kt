@@ -76,8 +76,9 @@ fun EspressoStaffAuthDialog(
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 8.dp,
             modifier = Modifier.width(480.dp)
         ) {
@@ -229,7 +230,7 @@ fun EspressoStaffAuthDialog(
                         disabledContainerColor = Zinc800,
                         disabledContentColor = Zinc400
                     ),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = CircleShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -243,7 +244,7 @@ fun EspressoStaffAuthDialog(
                     } else {
                         Text(
                             text = "Autorizar y Continuar",
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             fontSize = 16.sp
                         )
                     }

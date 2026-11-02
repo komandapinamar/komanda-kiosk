@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
@@ -52,20 +53,21 @@ fun EspressoCloseShiftDialog(
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(28.dp)
                     .fillMaxWidth()
             ) {
                 Text(
                     text = if (isEmployee) "Cierre y Arqueo Ciego de Caja" else "Cerrar caja y arqueo",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -75,7 +77,7 @@ fun EspressoCloseShiftDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Zinc950, RoundedCornerShape(12.dp))
+                        .background(KomandaTokens.SurfaceDeep, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -169,9 +171,9 @@ fun EspressoCloseShiftDialog(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = CircleShape
                     ) {
-                        Text("Confirmar cierre", fontWeight = FontWeight.Bold)
+                        Text("Confirmar cierre", fontWeight = FontWeight.Medium)
                     }
                 }
             }
