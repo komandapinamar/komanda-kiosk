@@ -38,20 +38,21 @@ fun EspressoCheckoutDialog(
 ) {
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(28.dp)
                     .fillMaxWidth()
             ) {
                 Text(
                     text = "Elegí tu medio de pago",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -60,7 +61,7 @@ fun EspressoCheckoutDialog(
                 Text(
                     text = "Total a pagar: $${String.format(java.util.Locale.US, "%.2f", totalAmount)} ARS",
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = KomandaTokens.AccentTertiary
                 )
 
@@ -69,30 +70,30 @@ fun EspressoCheckoutDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     // Option 1: Efectivo
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Zinc950,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(20.dp),
+                        color = KomandaTokens.SurfaceDeep,
+                        border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.45f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelectPaymentMethod("cash") }
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("[Efectivo]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
+                            Text("[Efectivo]", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = KomandaTokens.AccentTertiary)
                             Spacer(modifier = Modifier.padding(8.dp))
                             Column {
                                 Text(
                                     text = "Efectivo",
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 17.sp,
-                                    color = Color.White
+                                    color = KomandaTokens.TextPrimary
                                 )
                                 Text(
                                     text = "Se imprimirá un ticket para abonar en mostrador",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = KomandaTokens.AccentTertiary
+                                    color = KomandaTokens.TextSecondary
                                 )
                             }
                         }
@@ -100,30 +101,30 @@ fun EspressoCheckoutDialog(
 
                     // Option 2: QR Mercado Pago
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = Zinc950,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800),
+                        shape = RoundedCornerShape(20.dp),
+                        color = KomandaTokens.SurfaceDeep,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelectPaymentMethod("qr") }
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier.padding(18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("[QR]", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = KomandaTokens.AccentTertiary)
+                            Text("[QR]", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = KomandaTokens.AccentTertiary)
                             Spacer(modifier = Modifier.padding(8.dp))
                             Column {
                                 Text(
                                     text = "QR Mercado Pago",
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 17.sp,
-                                    color = Color.White
+                                    color = KomandaTokens.TextPrimary
                                 )
                                 Text(
-                                    text = "Escanear desde la app de MP o billeteras interoperables (saldo y tarjetas)",
+                                    text = "Escanear desde la app de MP o billeteras interoperable (saldo y tarjetas)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.6f)
+                                    color = KomandaTokens.TextSecondary
                                 )
                             }
                         }

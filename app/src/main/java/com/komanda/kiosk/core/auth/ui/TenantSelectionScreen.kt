@@ -60,17 +60,18 @@ fun TenantSelectionScreen(
                 .widthIn(max = 520.dp)
                 .fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush)
         ) {
             Column(
                 modifier = Modifier
-                    .padding(24.dp)
+                    .padding(28.dp)
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Seleccionar Comercio",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
                     color = Zinc300
                 )
 
@@ -113,10 +114,10 @@ fun TenantSelectionScreen(
                                     else Modifier
                                 ),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isExpress) Zinc800 else Zinc900.copy(alpha = 0.6f)
+                                containerColor = if (isExpress) KomandaTokens.SurfaceDeep else Zinc900.copy(alpha = 0.6f)
                             ),
-                            shape = RoundedCornerShape(10.dp),
-                            border = if (isExpress) null else BorderStroke(1.dp, Zinc800)
+                            shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(1.dp, if (isExpress) KomandaTokens.Border else Zinc800)
                         ) {
                             Row(
                                 modifier = Modifier

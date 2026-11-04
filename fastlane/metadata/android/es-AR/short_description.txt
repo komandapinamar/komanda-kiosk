@@ -1,0 +1,1 @@
+Terminal de autoservicio: escaneo, pedidos, cobro y ticket térmico.

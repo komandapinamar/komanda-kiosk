@@ -69,6 +69,7 @@ fun EspressoQuickAddDialog(
         categoryId: String?,
         newCategoryName: String?,
         barcode: String?,
+        itemType: String,
         isGeneric: Boolean,
         icon: String?,
         trackStock: Boolean,
@@ -76,8 +77,17 @@ fun EspressoQuickAddDialog(
     ) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val parsedScale = remember(scannedBarcode) {
+        scannedBarcode?.let { ScaleBarcodeParser.parse(it) }
+    }
     var name by remember { mutableStateOf(suggestion?.name ?: "") }
     var price by remember { mutableStateOf("") }
+    var itemType by remember(scannedBarcode) {
+        mutableStateOf(if (parsedScale != null) "weighted" else "unit")
+    }
+    var editableBarcode by remember(scannedBarcode) {
+        mutableStateOf(parsedScale?.pluCode ?: (scannedBarcode ?: ""))
+    }
     val initialMatchedCategory = suggestion?.suggestedCategory?.let { sug ->
         categories.find { it.name.equals(sug, ignoreCase = true) }
     }
@@ -88,15 +98,18 @@ fun EspressoQuickAddDialog(
     var selectedCategoryId by remember {
         mutableStateOf(initialMatchedCategory?.id ?: categories.firstOrNull()?.id ?: "")
     }
-    var isGeneric by remember { mutableStateOf(scannedBarcode.isNullOrBlank()) }
+    var isGeneric by remember(scannedBarcode) {
+        mutableStateOf(scannedBarcode.isNullOrBlank())
+    }
     var trackStock by remember { mutableStateOf(false) }
     var stockQuantity by remember { mutableStateOf("10") }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     BasicAlertDialog(onDismissRequest = { if (!isLoading) onDismiss() }) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 6.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -115,7 +128,11 @@ fun EspressoQuickAddDialog(
                 if (scannedBarcode != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Código escaneado: $scannedBarcode",
+                        text = if (parsedScale != null) {
+                            "Etiqueta de Balanza escaneada • PLU extraído: ${parsedScale.pluCode}"
+                        } else {
+                            "Código escaneado: $scannedBarcode"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = KomandaTokens.AccentTertiary
                     )
@@ -148,20 +165,76 @@ fun EspressoQuickAddDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Checkbox Producto Genérico
+                // Selector Tipo de Ítem: Unidad vs Balanza (PLU)
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { isGeneric = !isGeneric }
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Checkbox(
-                        checked = isGeneric,
-                        onCheckedChange = { isGeneric = it },
-                        colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
-                    )
-                    Text("Producto genérico táctil (sin código de barra)")
+                    Button(
+                        onClick = {
+                            itemType = "unit"
+                            if (scannedBarcode != null && parsedScale == null) {
+                                editableBarcode = scannedBarcode
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (itemType == "unit") KomandaTokens.AccentTertiary else Zinc800,
+                            contentColor = if (itemType == "unit") KomandaTokens.AccentPrimary else Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Unidad", fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = {
+                            itemType = "weighted"
+                            isGeneric = false
+                            trackStock = false
+                            if (parsedScale != null) {
+                                editableBarcode = parsedScale.pluCode
+                            } else if (editableBarcode.isNotBlank()) {
+                                editableBarcode = ScaleBarcodeParser.normalizePlu(editableBarcode)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (itemType == "weighted") KomandaTokens.AccentTertiary else Zinc800,
+                            contentColor = if (itemType == "weighted") KomandaTokens.AccentPrimary else Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Balanza (PLU)", fontWeight = FontWeight.Bold)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+
+                if (itemType == "unit") {
+                    // Checkbox Producto Genérico
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { isGeneric = !isGeneric }
+                    ) {
+                        Checkbox(
+                            checked = isGeneric,
+                            onCheckedChange = { isGeneric = it },
+                            colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
+                        )
+                        Text("Producto genérico táctil (sin código de barra)")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                } else {
+                    OutlinedTextField(
+                        value = editableBarcode,
+                        onValueChange = { editableBarcode = it },
+                        label = { Text("Código PLU (5 dígitos)") },
+                        placeholder = { Text("Ej. 00123") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 OutlinedTextField(
                     value = name,
@@ -176,7 +249,15 @@ fun EspressoQuickAddDialog(
                 OutlinedTextField(
                     value = price,
                     onValueChange = { price = it },
-                    label = { Text("Precio de venta ($)") },
+                    label = {
+                        Text(
+                            if (itemType == "weighted") {
+                                "Precio de referencia por kg ($)"
+                            } else {
+                                "Precio de venta ($)"
+                            }
+                        )
+                    },
                     placeholder = { Text("Ej. 3500.00") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -258,29 +339,31 @@ fun EspressoQuickAddDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Control de Stock
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { trackStock = !trackStock }
-                ) {
-                    Checkbox(
-                        checked = trackStock,
-                        onCheckedChange = { trackStock = it },
-                        colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
-                    )
-                    Text("Controlar stock de este producto")
-                }
+                if (itemType == "unit") {
+                    // Control de Stock
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { trackStock = !trackStock }
+                    ) {
+                        Checkbox(
+                            checked = trackStock,
+                            onCheckedChange = { trackStock = it },
+                            colors = CheckboxDefaults.colors(checkedColor = KomandaTokens.AccentTertiary)
+                        )
+                        Text("Controlar stock de este producto")
+                    }
 
-                if (trackStock) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = stockQuantity,
-                        onValueChange = { stockQuantity = it },
-                        label = { Text("Cantidad inicial de stock") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (trackStock) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = stockQuantity,
+                            onValueChange = { stockQuantity = it },
+                            label = { Text("Cantidad inicial de stock") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -304,20 +387,25 @@ fun EspressoQuickAddDialog(
                     Button(
                         onClick = {
                             val stock = (stockQuantity.toIntOrNull() ?: 0).coerceAtLeast(0)
-                            val code = if (isGeneric) null else scannedBarcode?.trim()
+                            val code = when {
+                                itemType == "weighted" -> ScaleBarcodeParser.normalizePlu(editableBarcode)
+                                isGeneric -> null
+                                else -> editableBarcode.trim().ifBlank { scannedBarcode?.trim() }
+                            }
                             onSave(
                                 name,
                                 price,
                                 if (isCreatingNewCategory || categories.isEmpty()) null else selectedCategoryId,
                                 if (isCreatingNewCategory || categories.isEmpty()) newCategoryName.trim() else null,
                                 code,
-                                isGeneric,
+                                itemType,
+                                if (itemType == "weighted") false else isGeneric,
                                 null,
-                                trackStock,
-                                stock
+                                if (itemType == "weighted") false else trackStock,
+                                if (itemType == "weighted") 0 else stock
                             )
                         },
-                        enabled = name.isNotBlank() && price.isNotBlank() && isCategoryValid && !isLoading,
+                        enabled = name.isNotBlank() && price.isNotBlank() && isCategoryValid && (itemType != "weighted" || ScaleBarcodeParser.normalizePlu(editableBarcode).isNotBlank()) && !isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = KomandaTokens.AccentTertiary, contentColor = KomandaTokens.AccentPrimary)
                     ) {
                         if (isLoading) {

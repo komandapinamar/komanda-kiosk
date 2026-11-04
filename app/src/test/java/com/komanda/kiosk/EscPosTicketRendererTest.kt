@@ -169,4 +169,45 @@ class EscPosTicketRendererTest {
         assertTrue("Must include MP operation id", text.contains("OPERACION MP: mp_pay_998877"))
         assertTrue("Must include thank you message", text.contains("¡GRACIAS POR SU COMPRA!"))
     }
+
+    @Test
+    fun `renderEspressoCashTicket and renderKioskQrApprovedTicket format weighted scale items with Balanza label and calculatedSubtotal`() {
+        val weightedPayload = TicketPayload(
+            orderId = "ord-weighted-1",
+            purchaseNumber = "108",
+            source = "admin_direct",
+            tenant = "Fiambrería Express",
+            items = listOf(
+                TicketItem(
+                    id = "item-w-1",
+                    name = "Queso Tybo",
+                    quantity = 1,
+                    unitPrice = 2450.0,
+                    lineTotal = 2450.0,
+                    itemType = "weighted"
+                ),
+                TicketItem(
+                    id = "item-w-2",
+                    name = "Queso Tybo",
+                    quantity = 1,
+                    unitPrice = 1800.0,
+                    lineTotal = 1800.0,
+                    itemType = "weighted"
+                )
+            ),
+            summary = TicketSummary(subtotal = 4250.0, total = 4250.0)
+        )
+
+        val cashText = String(EscPosTicketRenderer.renderEspressoCashTicket(weightedPayload), Charsets.ISO_8859_1)
+        assertTrue("Cash ticket must include Queso Tybo (Balanza)", cashText.contains("Queso Tybo (Balanza)"))
+        assertTrue("Cash ticket must include $2.450 line", cashText.contains("$2.450"))
+        assertTrue("Cash ticket must include $1.800 line", cashText.contains("$1.800"))
+        assertTrue("Cash ticket must include total $4.250", cashText.contains("TOTAL A PAGAR: $4.250"))
+
+        val qrText = String(EscPosTicketRenderer.renderKioskQrApprovedTicket(weightedPayload, paymentId = "mp_123"), Charsets.ISO_8859_1)
+        assertTrue("QR ticket must include Queso Tybo (Balanza)", qrText.contains("Queso Tybo (Balanza)"))
+        assertTrue("QR ticket must include $2.450 line", qrText.contains("$2.450"))
+        assertTrue("QR ticket must include $1.800 line", qrText.contains("$1.800"))
+        assertTrue("QR ticket must include total $4.250", qrText.contains("TOTAL PAGADO: $4.250"))
+    }
 }

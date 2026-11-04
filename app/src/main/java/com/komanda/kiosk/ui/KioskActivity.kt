@@ -1,5 +1,6 @@
 package com.komanda.kiosk.ui
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.komanda.kiosk.BuildConfig
 import com.komanda.kiosk.core.auth.AuthManager
 import com.komanda.kiosk.core.auth.AuthState
 import com.komanda.kiosk.core.auth.SecureSessionStorage
@@ -50,7 +52,7 @@ class KioskActivity : ComponentActivity() {
     private lateinit var printerRouter: PrinterRouter
     private var activeEspressoManager: EspressoManager? = null
 
-    private var currentBaseUrl by mutableStateOf("https://throwing-dust-public.ngrok-free.dev")
+    private var currentBaseUrl by mutableStateOf(BuildConfig.DEFAULT_BASE_URL)
     private val barcodeBuffer = StringBuilder()
     private var lastKeyTime = 0L
 
@@ -186,6 +188,9 @@ class KioskActivity : ComponentActivity() {
      * Intercepts physical USB / Bluetooth barcode scanner keyboard events.
      * Barcode scanners type rapid keystrokes ending with KeyEvent.KEYCODE_ENTER.
      */
+    // Lint resuelve el override contra ComponentActivity.dispatchKeyEvent (@RestrictTo),
+    // pero es la firma publica de android.app.Activity: el override es intencional.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             val now = System.currentTimeMillis()

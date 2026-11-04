@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -93,6 +94,7 @@ fun KioskQrPaymentDialog(
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 8.dp,
             modifier = Modifier.width(540.dp)
         ) {
@@ -192,15 +194,16 @@ fun KioskQrPaymentDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Zinc800,
-                        contentColor = Color.White
+                        containerColor = KomandaTokens.SurfacePill,
+                        contentColor = KomandaTokens.TextPrimary
                     )
                 ) {
                     Text(
                         text = "Cancelar y volver",
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                         fontSize = 14.sp
                     )
                 }

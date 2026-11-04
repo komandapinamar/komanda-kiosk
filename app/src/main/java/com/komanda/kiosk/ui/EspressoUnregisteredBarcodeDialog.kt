@@ -47,8 +47,9 @@ fun EspressoUnregisteredBarcodeDialog(
 ) {
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(28.dp),
             color = Zinc900,
+            border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
             tonalElevation = 8.dp,
             modifier = Modifier.width(440.dp)
         ) {
@@ -115,11 +116,11 @@ fun EspressoUnregisteredBarcodeDialog(
                         containerColor = KomandaTokens.AccentTertiary,
                         contentColor = KomandaTokens.AccentPrimary
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = CircleShape
                 ) {
                     Text(
                         text = "Entendido",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         fontSize = 18.sp
                     )
                 }

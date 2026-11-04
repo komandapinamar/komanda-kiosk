@@ -88,7 +88,12 @@ object EscPosTicketRenderer {
         stream.write(CMD_BOLD_OFF)
 
         for (item in payload.items) {
-            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            val label = if (item.itemType == "weighted") {
+                "${item.name} (Balanza)"
+            } else {
+                "${item.quantity} x ${item.name}"
+            }
+            writeWrapped(stream, label)
             writeText(stream, "    ${formatMoney(item.lineTotal, payload.currency)}\n")
         }
 
@@ -126,7 +131,12 @@ object EscPosTicketRenderer {
         stream.write(CMD_BOLD_OFF)
 
         for (item in payload.items) {
-            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            val label = if (item.itemType == "weighted") {
+                "${item.name} (Balanza)"
+            } else {
+                "${item.quantity} x ${item.name}"
+            }
+            writeWrapped(stream, label)
             writeText(stream, "    ${formatMoney(item.lineTotal, payload.currency)}\n")
         }
 
@@ -168,7 +178,12 @@ object EscPosTicketRenderer {
         stream.write(CMD_BOLD_OFF)
 
         for (item in payload.items) {
-            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            val label = if (item.itemType == "weighted") {
+                "${item.name} (Balanza)"
+            } else {
+                "${item.quantity} x ${item.name}"
+            }
+            writeWrapped(stream, label)
             writeText(stream, "    ${formatMoney(item.lineTotal, payload.currency)}\n")
         }
 
@@ -328,7 +343,12 @@ object EscPosTicketRenderer {
         for (item in payload.items) {
             totalUnits += item.quantity
             stream.write(CMD_BOLD_ON)
-            writeWrapped(stream, "${item.quantity} x ${item.name}")
+            val label = if (item.itemType == "weighted") {
+                "${item.name} (Balanza)"
+            } else {
+                "${item.quantity} x ${item.name}"
+            }
+            writeWrapped(stream, label)
             stream.write(CMD_BOLD_OFF)
 
             for (option in item.options) {

@@ -274,7 +274,7 @@ fun EspressoKioskScreen(
                 categories = categories,
                 errorMessage = quickAddError,
                 isLoading = isLoading,
-                onSave = { name, price, categoryId, newCategoryName, code, isGeneric, icon, trackStock, stock ->
+                onSave = { name, price, categoryId, newCategoryName, code, itemType, isGeneric, icon, trackStock, stock ->
                     coroutineScope.launch {
                         quickAddError = null
                         var finalCatId = categoryId
@@ -302,6 +302,7 @@ fun EspressoKioskScreen(
                             price = price,
                             categoryId = finalCatId,
                             barcode = code,
+                            itemType = itemType,
                             isGeneric = isGeneric,
                             genericIcon = icon,
                             trackStock = trackStock,
@@ -362,14 +363,14 @@ fun EspressoKioskScreen(
                 if (activeStaffSession != null) {
                     Surface(
                         color = Zinc900,
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, KomandaTokens.AccentTertiary),
-                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, KomandaTokens.PrismRingBrush),
+                        shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -384,8 +385,8 @@ fun EspressoKioskScreen(
                                 Column {
                                     Text(
                                         text = "Modo Carga Rápida Activo",
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        fontWeight = FontWeight.Medium,
+                                        color = KomandaTokens.TextPrimary,
                                         fontSize = 17.sp
                                     )
                                     Text(
@@ -397,10 +398,14 @@ fun EspressoKioskScreen(
                             }
                             Button(
                                 onClick = { espressoManager.endStaffSession() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Color.White),
-                                shape = RoundedCornerShape(8.dp)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = KomandaTokens.SurfacePill,
+                                    contentColor = KomandaTokens.TextPrimary
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
+                                shape = CircleShape
                             ) {
-                                Text("Salir de Modo Carga", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("Salir de Modo Carga", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                             }
                         }
                     }
@@ -415,15 +420,15 @@ fun EspressoKioskScreen(
                     Column {
                         Text(
                             text = "Komanda Kiosk",
-                            color = KomandaTokens.AccentTertiary,
-                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
-                            fontWeight = FontWeight.Bold
+                            color = Zinc400,
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
+                            fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "Bienvenidos a ${espressoManager.tenantName.ifBlank { "Komanda Espresso" }}",
                             style = MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontWeight = FontWeight.Medium,
+                            color = KomandaTokens.TextPrimary
                         )
                     }
 
@@ -433,13 +438,14 @@ fun EspressoKioskScreen(
                         },
                         modifier = Modifier
                             .size(50.dp)
-                            .background(Zinc900, CircleShape)
+                            .background(KomandaTokens.SurfacePill, CircleShape)
+                            .border(1.dp, KomandaTokens.Border, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = "Administración",
-                            tint = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(24.dp)
+                            tint = KomandaTokens.TextPrimary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -582,17 +588,19 @@ fun EspressoKioskScreen(
                             Text(
                                 text = "Escáner activo",
                                 style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                fontWeight = FontWeight.Medium,
+                                color = KomandaTokens.TextPrimary
                             )
                             Button(
                                 onClick = { viewMode = KioskViewMode.LIST },
+                                shape = CircleShape,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Zinc800,
-                                    contentColor = Color.White
+                                    containerColor = KomandaTokens.SurfacePill,
+                                    contentColor = KomandaTokens.TextPrimary
                                 )
                             ) {
-                                Text("Volver al catálogo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("Volver al catálogo", color = KomandaTokens.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
                             }
                         }
 
@@ -602,9 +610,9 @@ fun EspressoKioskScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Zinc900)
-                                .border(2.dp, KomandaTokens.AccentTertiary.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(KomandaTokens.LiquidGlassBrush)
+                                .border(1.5.dp, KomandaTokens.PrismRingBrush, RoundedCornerShape(28.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -649,8 +657,18 @@ fun EspressoKioskScreen(
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                             Spacer(modifier = Modifier.height(10.dp))
+                                            val feedbackDetail = buildString {
+                                                append("$${scanned.price}")
+                                                if (scanned.isWeighted) {
+                                                    append("  •  Balanza")
+                                                }
+                                                if (!scanned.categoryName.isNullOrBlank()) {
+                                                    append("  •  ${scanned.categoryName}")
+                                                }
+                                                append("  •  En el pedido: ${scanned.quantityInCart}")
+                                            }
                                             Text(
-                                                text = "$${scanned.price}  •  En el pedido: ${scanned.quantityInCart}",
+                                                text = feedbackDetail,
                                                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp),
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = KomandaTokens.AccentTertiary
@@ -698,19 +716,21 @@ fun EspressoKioskScreen(
                             Text(
                                 text = "Catálogo de Productos",
                                 style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 32.sp
                                 ),
-                                color = Color.White
+                                color = KomandaTokens.TextPrimary
                             )
                             Button(
                                 onClick = { viewMode = KioskViewMode.SCANNER },
+                                shape = CircleShape,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Zinc800,
-                                    contentColor = Color.White
+                                    containerColor = KomandaTokens.SurfacePill,
+                                    contentColor = KomandaTokens.TextPrimary
                                 )
                             ) {
-                                Text("Volver al escáner", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text("Volver al escáner", color = KomandaTokens.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
                             }
                         }
 
@@ -726,9 +746,12 @@ fun EspressoKioskScreen(
                                 FilterChip(
                                     selected = selectedCategory == null,
                                     onClick = { espressoManager.selectCategory(null) },
-                                    label = { Text("Todos", fontSize = 18.sp, fontWeight = FontWeight.SemiBold) },
+                                    label = { Text("Todos", fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+                                    shape = CircleShape,
                                     modifier = Modifier.height(56.dp),
                                     colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = KomandaTokens.SurfacePill,
+                                        labelColor = Zinc400,
                                         selectedContainerColor = KomandaTokens.AccentTertiary,
                                         selectedLabelColor = KomandaTokens.AccentPrimary
                                     )
@@ -738,9 +761,12 @@ fun EspressoKioskScreen(
                                 FilterChip(
                                     selected = selectedCategory == cat.id,
                                     onClick = { espressoManager.selectCategory(cat.id) },
-                                    label = { Text(cat.name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold) },
+                                    label = { Text(cat.name, fontSize = 18.sp, fontWeight = FontWeight.Medium) },
+                                    shape = CircleShape,
                                     modifier = Modifier.height(56.dp),
                                     colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = KomandaTokens.SurfacePill,
+                                        labelColor = Zinc400,
                                         selectedContainerColor = KomandaTokens.AccentTertiary,
                                         selectedLabelColor = KomandaTokens.AccentPrimary
                                     )
@@ -752,9 +778,10 @@ fun EspressoKioskScreen(
 
                         val filteredItems = items.filter { item ->
                             val isPublished = item.status == "active"
+                            val isStandardUnit = item.itemType == "unit"
                             val matchCat = selectedCategory == null || item.categoryId == selectedCategory
                             val matchQuery = searchQuery.isBlank() || item.name.contains(searchQuery, ignoreCase = true)
-                            isPublished && matchCat && matchQuery
+                            isPublished && isStandardUnit && matchCat && matchQuery
                         }
 
                         if (filteredItems.isEmpty()) {
@@ -776,9 +803,9 @@ fun EspressoKioskScreen(
                                 items(filteredItems) { item ->
                                     Card(
                                         onClick = { espressoManager.addToCart(item) },
-                                        shape = RoundedCornerShape(16.dp),
+                                        shape = RoundedCornerShape(22.dp),
                                         colors = CardDefaults.cardColors(containerColor = Zinc900),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800)
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border)
                                     ) {
                                         Column(
                                             modifier = Modifier
@@ -836,7 +863,7 @@ fun EspressoKioskScreen(
                     .width(420.dp)
                     .fillMaxHeight(),
                 color = Zinc900,
-                border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800)
+                border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.Border)
             ) {
                 Column(
                     modifier = Modifier
@@ -849,19 +876,19 @@ fun EspressoKioskScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito", tint = KomandaTokens.AccentTertiary, modifier = Modifier.size(32.dp))
+                            Icon(Icons.Default.ShoppingCart, contentDescription = "Carrito", tint = KomandaTokens.AccentTertiary, modifier = Modifier.size(30.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "Tu pedido",
                                 style = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                fontWeight = FontWeight.Medium,
+                                color = KomandaTokens.TextPrimary
                             )
                         }
 
                         if (cart.isNotEmpty()) {
                             TextButton(onClick = { espressoManager.clearCart() }) {
-                                Text("Vaciar", color = Color.Red.copy(alpha = 0.8f), fontSize = 16.sp)
+                                Text("Vaciar", color = Color(0xFFF87171), fontSize = 16.sp)
                             }
                         }
                     }
@@ -880,19 +907,19 @@ fun EspressoKioskScreen(
                                     imageVector = Icons.Default.ShoppingCart,
                                     contentDescription = null,
                                     modifier = Modifier.size(72.dp),
-                                    tint = Color.White.copy(alpha = 0.3f)
+                                    tint = Color.White.copy(alpha = 0.25f)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "El carrito está vacío",
-                                    color = Color.White.copy(alpha = 0.4f),
+                                    color = Color.White.copy(alpha = 0.45f),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontSize = 22.sp
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "Escaneá un producto o seleccionalo de la lista",
-                                    color = Color.White.copy(alpha = 0.3f),
+                                    color = Color.White.copy(alpha = 0.35f),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontSize = 16.sp,
                                     textAlign = TextAlign.Center
@@ -904,24 +931,45 @@ fun EspressoKioskScreen(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(cart) { line ->
+                            items(cart, key = { it.lineId }) { line ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(Zinc950, RoundedCornerShape(12.dp))
+                                        .background(KomandaTokens.SurfaceDeep, RoundedCornerShape(16.dp))
+                                        .border(1.dp, KomandaTokens.BorderSubtle, RoundedCornerShape(16.dp))
                                         .padding(16.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = line.item.name,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White,
-                                            fontSize = 19.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                text = line.item.name,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White,
+                                                fontSize = 19.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (line.isWeighted) {
+                                                Surface(
+                                                    color = KomandaTokens.AccentTertiary.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Balanza",
+                                                        color = KomandaTokens.AccentTertiary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 12.sp,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "$${String.format(java.util.Locale.US, "%.2f", line.lineTotal)}",
@@ -936,7 +984,7 @@ fun EspressoKioskScreen(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         IconButton(
-                                            onClick = { espressoManager.updateQuantity(line.item.id, -1) },
+                                            onClick = { espressoManager.updateQuantity(line.lineId, -1) },
                                             modifier = Modifier
                                                 .size(44.dp)
                                                 .background(Zinc800, CircleShape)
@@ -952,13 +1000,15 @@ fun EspressoKioskScreen(
                                             modifier = Modifier.padding(horizontal = 4.dp)
                                         )
 
-                                        IconButton(
-                                            onClick = { espressoManager.updateQuantity(line.item.id, 1) },
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .background(Zinc800, CircleShape)
-                                        ) {
-                                            Icon(Icons.Default.Add, contentDescription = "Más", tint = Color.White, modifier = Modifier.size(22.dp))
+                                        if (!line.isWeighted) {
+                                            IconButton(
+                                                onClick = { espressoManager.updateQuantity(line.lineId, 1) },
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .background(Zinc800, CircleShape)
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = "Más", tint = Color.White, modifier = Modifier.size(22.dp))
+                                            }
                                         }
                                     }
                                 }
@@ -970,16 +1020,17 @@ fun EspressoKioskScreen(
 
                     // Discount code
                     Surface(
-                        color = Zinc950,
-                        shape = RoundedCornerShape(16.dp),
+                        color = KomandaTokens.SurfaceDeep,
+                        shape = RoundedCornerShape(20.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, KomandaTokens.BorderSubtle),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 text = "Código de descuento",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.SemiBold
+                                color = Zinc400,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -991,13 +1042,14 @@ fun EspressoKioskScreen(
                                         espressoManager.clearDiscountError()
                                     },
                                     singleLine = true,
+                                    shape = RoundedCornerShape(14.dp),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedContainerColor = Zinc900,
                                         unfocusedContainerColor = Zinc900,
-                                        focusedBorderColor = KomandaTokens.AccentTertiary,
-                                        unfocusedBorderColor = Zinc800,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = KomandaTokens.AccentTertiary.copy(alpha = 0.45f),
+                                        unfocusedBorderColor = Zinc700,
+                                        focusedTextColor = KomandaTokens.TextPrimary,
+                                        unfocusedTextColor = KomandaTokens.TextPrimary,
                                         cursorColor = KomandaTokens.AccentTertiary
                                     ),
                                     modifier = Modifier.weight(1f)
@@ -1028,7 +1080,7 @@ fun EspressoKioskScreen(
                                         containerColor = KomandaTokens.AccentTertiary,
                                         contentColor = KomandaTokens.AccentPrimary
                                     ),
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = CircleShape
                                 ) {
                                     if (isDiscountPreviewLoading) {
                                         CircularProgressIndicator(
@@ -1036,7 +1088,7 @@ fun EspressoKioskScreen(
                                             modifier = Modifier.size(18.dp)
                                         )
                                     } else {
-                                        Text("Aplicar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text("Aplicar", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                                     }
                                 }
                             }
@@ -1092,8 +1144,9 @@ fun EspressoKioskScreen(
 
                     // Checkout Summary Bar
                     Surface(
-                        color = Zinc950,
-                        shape = RoundedCornerShape(16.dp),
+                        color = KomandaTokens.SurfaceDeep,
+                        shape = RoundedCornerShape(24.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.25.dp, KomandaTokens.PrismRingBrush),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
@@ -1102,7 +1155,7 @@ fun EspressoKioskScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Total a pagar", color = Color.White.copy(alpha = 0.7f), fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                                Text("Total a pagar", color = Zinc400, fontSize = 20.sp, fontWeight = FontWeight.Medium)
                                 Text(
                                     text = "$${String.format(
                                         java.util.Locale.US,
@@ -1129,11 +1182,11 @@ fun EspressoKioskScreen(
                                     disabledContainerColor = Zinc800,
                                     disabledContentColor = Color.White.copy(alpha = 0.3f)
                                 ),
-                                shape = RoundedCornerShape(14.dp)
+                                shape = CircleShape
                             ) {
                                 Text(
                                     text = "Pagar",
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     fontSize = 26.sp
                                 )
                             }

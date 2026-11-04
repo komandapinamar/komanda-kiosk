@@ -1,9 +1,49 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
 }
+
+// ---------------------------------------------------------------------------
+// Versionado (unica fuente de verdad: version.properties en la raiz del repo)
+// ---------------------------------------------------------------------------
+val appVersion = Properties().apply {
+    val f = rootProject.file("version.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+// ---------------------------------------------------------------------------
+// Firma de release
+// Prioridad: keystore.properties (local, gitignored) -> variables de entorno (CI).
+// Si no hay credenciales el AAB se genera SIN firmar y Play lo rechaza.
+// ---------------------------------------------------------------------------
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun signingValue(key: String, env: String): String? =
+    keystoreProperties.getProperty(key)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(env)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signingValue("storeFile", "KOMANDA_KEYSTORE_FILE")
+val releaseStorePassword = signingValue("storePassword", "KOMANDA_KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingValue("keyAlias", "KOMANDA_KEY_ALIAS")
+val releaseKeyPassword = signingValue("keyPassword", "KOMANDA_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it != null }
+
+// URL base por defecto del backend. Override: -Pkomanda.baseUrl=... o KOMANDA_BASE_URL.
+val defaultBaseUrl: String = providers.gradleProperty("komanda.baseUrl").orNull
+    ?: System.getenv("KOMANDA_BASE_URL")
+    ?: "https://kda.ar"
 
 android {
     namespace = "com.komanda.kiosk"
@@ -15,68 +55,56 @@ android {
         applicationId = "com.komanda.kiosk"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersion.getProperty("versionCode").trim().toInt()
+        versionName = appVersion.getProperty("versionName").trim()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "DEFAULT_BASE_URL", "\"$defaultBaseUrl\"")
     }
 
     signingConfigs {
-        create("release") {
-            val keystoreFile = file("release-key.jks")
-            val storePass = providers.gradleProperty("KEYSTORE_PASSWORD")
-                .orElse(providers.environmentVariable("KEYSTORE_PASSWORD")).orNull
-            val alias = providers.gradleProperty("KEY_ALIAS")
-                .orElse(providers.environmentVariable("KEY_ALIAS")).orNull
-            val keyPass = providers.gradleProperty("KEY_PASSWORD")
-                .orElse(providers.environmentVariable("KEY_PASSWORD")).orNull
-            if (keystoreFile.exists()) {
-                storeFile = keystoreFile
-                storePassword = storePass
-                keyAlias = alias
-                keyPassword = keyPass
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
             optimization {
                 enable = false
             }
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
 }
 
-tasks.configureEach {
-    if (name == "assembleRelease" || name == "bundleRelease") {
-        doFirst {
-            val keystoreFile = file("release-key.jks")
-            val hasStorePassword = providers.gradleProperty("KEYSTORE_PASSWORD").isPresent ||
-                providers.environmentVariable("KEYSTORE_PASSWORD").isPresent
-            val hasAlias = providers.gradleProperty("KEY_ALIAS").isPresent ||
-                providers.environmentVariable("KEY_ALIAS").isPresent
-            val hasKeyPassword = providers.gradleProperty("KEY_PASSWORD").isPresent ||
-                providers.environmentVariable("KEY_PASSWORD").isPresent
-            if (!keystoreFile.exists() || !hasStorePassword || !hasAlias || !hasKeyPassword) {
-                throw GradleException("Release signing requires app/release-key.jks and KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.")
-            }
-        }
-    }
+if (!hasReleaseSigning) {
+    logger.warn(
+        "Komanda Kiosk: no hay credenciales de firma. El bundle de release se generara SIN FIRMAR. " +
+            "Crea keystore.properties (ver README) o define KOMANDA_KEYSTORE_FILE/KOMANDA_KEYSTORE_PASSWORD/KOMANDA_KEY_ALIAS/KOMANDA_KEY_PASSWORD.",
+    )
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)
     implementation(libs.androidx.activity.compose)
