@@ -45,12 +45,10 @@ import androidx.compose.ui.unit.sp
 import com.komanda.kiosk.core.network.CashMovementDto
 import com.komanda.kiosk.core.network.CustomerRecurrenceDto
 import com.komanda.kiosk.core.network.DashboardAnalyticsDto
-import com.komanda.kiosk.core.network.KitchenDelaysDto
 import com.komanda.kiosk.core.network.PeakHoursHeatmapCellDto
 import com.komanda.kiosk.core.network.PromotionsDto
 import com.komanda.kiosk.core.network.TenderBreakdownDto
 import com.komanda.kiosk.core.network.TopProductDto
-import com.komanda.kiosk.core.network.UnconvertedProductDto
 import com.komanda.kiosk.ui.theme.Emerald600
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc300
@@ -100,7 +98,7 @@ fun BackofficeAnalyticsSection(
                         color = KomandaTokens.TextPrimary
                     )
                     Text(
-                        text = "Mismas métricas del Backoffice Komanda (solo Propietario)",
+                        text = "Ventas, caja y clientes de Komanda Express (solo Propietario)",
                         fontSize = 12.sp,
                         color = Zinc400
                     )
@@ -178,7 +176,6 @@ fun BackofficeAnalyticsSection(
             AnalyticsProductsPanel(analytics)
             AnalyticsFinancialPanel(analytics)
             AnalyticsPeakHoursPanel(analytics)
-            AnalyticsKitchenPanel(analytics.kitchenDelays)
             AnalyticsCustomersAndPromotions(
                 recurrence = analytics.customerRecurrence,
                 promotions = analytics.promotions
@@ -200,23 +197,9 @@ private fun AnalyticsKpiCards(data: DashboardAnalyticsDto) {
             modifier = Modifier.weight(1f)
         )
         KpiCard(
-            label = "Tiempo en carta",
-            value = formatSeconds(data.dwell.avgDwellSeconds),
-            subtext = "${data.dwell.totalSessions} visitas · ${data.dwell.orderPlacedSessions} con compra",
-            highlight = KomandaTokens.AccentTertiary,
-            modifier = Modifier.weight(1f)
-        )
-        KpiCard(
             label = "Ticket promedio",
             value = formatMoney(data.financial.avgOrderValue),
             subtext = "${data.financial.paidOrdersCount} pedidos pagados",
-            modifier = Modifier.weight(1f)
-        )
-        KpiCard(
-            label = "Conversión & rebote",
-            value = "${formatDecimal(data.dwell.conversionRate)}%",
-            subtext = "Rebote: ${formatDecimal(data.dwell.bounceRate)}% · ${data.dwell.bounceSessions} sesiones",
-            highlight = Emerald400,
             modifier = Modifier.weight(1f)
         )
     }
@@ -323,7 +306,6 @@ private fun AnalyticsProductsPanel(data: DashboardAnalyticsDto) {
     var byRevenue by remember { mutableStateOf(false) }
     val topProducts: List<TopProductDto> =
         if (byRevenue) data.topProducts.byRevenue else data.topProducts.byQuantity
-    val unconverted = data.unconvertedProducts ?: emptyList()
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -381,51 +363,6 @@ private fun AnalyticsProductsPanel(data: DashboardAnalyticsDto) {
                                     .fillMaxWidth(fraction)
                                     .height(7.dp)
                                     .background(KomandaTokens.AccentTertiary, RoundedCornerShape(20.dp))
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        PanelCard(
-            title = "Miran mucho pero no piden",
-            subtitle = "Alta atención y baja conversión",
-            modifier = Modifier.weight(1f)
-        ) {
-            if (unconverted.isEmpty()) {
-                EmptyHint("Sin fricción detectada en el menú para este período.")
-            } else {
-                unconverted.take(6).forEach { product ->
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Zinc950,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    product.productName,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                SuggestionBadge(product.suggestion)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${product.qualifiedViews} visitas · ${product.purchasesCount} pedidos · ${formatDecimal(product.conversionRate)}% conversión",
-                                fontSize = 11.sp,
-                                color = Zinc400
                             )
                         }
                     }
@@ -529,51 +466,6 @@ private fun AnalyticsPeakHoursPanel(data: DashboardAnalyticsDto) {
         val maxOrders = max(heatmap?.maxOrdersInSlot ?: 1, 1)
         cells.take(8).forEach { cell ->
             PeakHourRow(cell, maxOrders)
-        }
-    }
-}
-
-@Composable
-private fun AnalyticsKitchenPanel(kitchen: KitchenDelaysDto?) {
-    if (kitchen == null) return
-
-    PanelCard(
-        title = "Demoras en cocina",
-        subtitle = "Tiempos observados de preparación y comandas en curso"
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            KitchenMetric("Espera", kitchen.waitingMinutes.p50, kitchen.waitingMinutes.p90, kitchen.waitingMinutes.sampleSize, Modifier.weight(1f))
-            KitchenMetric("Preparación", kitchen.preparationMinutes.p50, kitchen.preparationMinutes.p90, kitchen.preparationMinutes.sampleSize, Modifier.weight(1f))
-            KitchenMetric("Total hasta listo", kitchen.totalTimeMinutes.p50, kitchen.totalTimeMinutes.p90, kitchen.totalTimeMinutes.sampleSize, Modifier.weight(1f))
-        }
-
-        if (kitchen.pendingOrders.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(14.dp))
-            Text("Comandas en curso (${kitchen.pendingOrders.size})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(modifier = Modifier.height(6.dp))
-            kitchen.pendingOrders.sortedByDescending { it.waitingAgeMinutes }.take(6).forEach { order ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "#${order.purchaseNumber} · ${if (order.fulfillmentStatus == "preparing") "En cocina" else "En cola"}",
-                        fontSize = 12.sp,
-                        color = Zinc300
-                    )
-                    Text(
-                        "${order.waitingAgeMinutes} min · ${formatMoney(order.total)}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (order.waitingAgeMinutes >= 25) Red400 else Amber300
-                    )
-                }
-            }
         }
     }
 }
@@ -734,24 +626,6 @@ private fun MiniToggle(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SuggestionBadge(suggestion: String) {
-    val color = when {
-        suggestion.contains("foto", ignoreCase = true) -> Red400
-        suggestion.contains("precio", ignoreCase = true) -> Color(0xFF7DD3FC)
-        else -> Amber300
-    }
-    Surface(shape = RoundedCornerShape(20.dp), color = color.copy(alpha = 0.14f)) {
-        Text(
-            suggestion,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = color,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-        )
-    }
-}
-
-@Composable
 private fun LedgerRow(label: String, value: String, color: Color, bold: Boolean = false) {
     Row(
         modifier = Modifier
@@ -819,23 +693,6 @@ private fun PeakHourRow(cell: PeakHoursHeatmapCellDto, maxOrders: Int) {
                     .height(6.dp)
                     .background(if (cell.isPeak) Amber300 else KomandaTokens.AccentTertiary, RoundedCornerShape(20.dp))
             )
-        }
-    }
-}
-
-@Composable
-private fun KitchenMetric(label: String, p50: Double, p90: Double, sampleSize: Int, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = Zinc900,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Zinc800)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(label.uppercase(Locale.US), fontSize = 9.sp, color = Zinc400, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("${formatDecimal(p50)} min", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("p90: ${formatDecimal(p90)} min · ${sampleSize} ped.", fontSize = 9.sp, color = Zinc400)
         }
     }
 }
@@ -909,13 +766,6 @@ private fun formatDecimal(value: Double): String {
     } else {
         String.format(Locale.US, "%.1f", value)
     }
-}
-
-private fun formatSeconds(seconds: Int): String {
-    if (seconds < 60) return "${seconds}s"
-    val minutes = seconds / 60
-    val remaining = seconds % 60
-    return if (remaining == 0) "${minutes}m" else "${minutes}m ${remaining}s"
 }
 
 private fun formatBucket(bucket: String, granularity: String): String {
