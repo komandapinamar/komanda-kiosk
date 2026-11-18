@@ -108,7 +108,10 @@ data class UpdateCatalogItemRequest(
     val itemType: String? = null,
     val barcode: String? = null,
     val status: String? = null,
-    val version: Int? = null
+    val version: Int? = null,
+    val name: String? = null,
+    val price: String? = null,
+    val categoryId: String? = null
 )
 
 @JsonClass(generateAdapter = true)

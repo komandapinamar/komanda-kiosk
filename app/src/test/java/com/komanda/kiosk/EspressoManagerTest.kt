@@ -44,6 +44,7 @@ import retrofit2.Response
 open class FakeEspressoApi : KomandaApi {
     var lastDirectOrderRequest: CreateDirectOrderRequest? = null
     var lastCatalogItemRequest: CreateCatalogItemRequest? = null
+    var lastCatalogItemPatch: UpdateCatalogItemRequest? = null
     var lastCreateCategoryRequest: CreateCategoryRequest? = null
     var mockCreateCategorySuccess: Boolean = true
     var mockCreateCatalogItemSuccess: Boolean = true
@@ -191,7 +192,14 @@ open class FakeEspressoApi : KomandaApi {
             return Response.error(404, okhttp3.ResponseBody.create(null, "{}"))
         }
         val current = items[index]
+        lastCatalogItemPatch = body
+        if (ifMatch != current.version.toString() || body.version != current.version) {
+            return Response.error(409, okhttp3.ResponseBody.create(null, "{}"))
+        }
         val updated = current.copy(
+            name = body.name ?: current.name,
+            price = body.price ?: current.price,
+            categoryId = body.categoryId ?: current.categoryId,
             status = body.status ?: current.status,
             version = current.version + 1
         )
@@ -346,6 +354,52 @@ open class FakeEspressoApi : KomandaApi {
 }
 
 class EspressoManagerTest {
+    @Test
+    fun editsPausedProductAndMovesItWithoutChangingItsAvailability() = runTest {
+        val api = FakeEspressoApi()
+        val paused = api.items.first().copy(status = "unavailable", version = 3)
+        api.items[0] = paused
+        val manager = EspressoManager("tenant-1", "Tienda", api)
+        manager.loadCatalog()
+        assertTrue(manager.backofficeItems.value.contains(paused))
+        assertTrue(manager.items.value.none { it.id == paused.id })
+
+        assertNull(manager.editCatalogItem(paused, "Bebida fría", "1700,50", "cat-2"))
+        val updated = manager.backofficeItems.value.first { it.id == paused.id }
+        assertEquals("Bebida fría", updated.name)
+        assertEquals("1700.50", updated.price)
+        assertEquals("cat-2", updated.categoryId)
+        assertEquals("unavailable", updated.status)
+        assertEquals(4, updated.version)
+        assertNull(api.lastCatalogItemPatch?.status)
+        assertTrue(manager.items.value.none { it.id == paused.id })
+    }
+
+    @Test
+    fun refusesMovingActiveProductToDraftCategory() = runTest {
+        val api = FakeEspressoApi()
+        api.categories.add(CatalogCategoryDto("cat-3", "Snacks", status = "draft"))
+        val manager = EspressoManager("tenant-1", "Tienda", api)
+        manager.loadCatalog()
+        val item = manager.backofficeItems.value.first()
+
+        assertNotNull(manager.editCatalogItem(item, item.name, item.price, "cat-3"))
+        assertNull(api.lastCatalogItemPatch)
+        assertEquals(item, manager.backofficeItems.value.first())
+    }
+
+    @Test
+    fun refreshesCatalogWhenAnEditUsesAnOldVersion() = runTest {
+        val api = FakeEspressoApi()
+        val manager = EspressoManager("tenant-1", "Tienda", api)
+        manager.loadCatalog()
+        val item = manager.backofficeItems.value.first()
+        api.items[0] = item.copy(name = "Editado en otro equipo", version = item.version + 1)
+
+        assertNotNull(manager.editCatalogItem(item, "Otro nombre", item.price, item.categoryId.orEmpty()))
+        assertEquals("Editado en otro equipo", manager.backofficeItems.value.first().name)
+    }
+
 
     @Test
     fun loadCatalog_populatesCategoriesAndItems() = runTest {

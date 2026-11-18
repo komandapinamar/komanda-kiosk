@@ -34,6 +34,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -150,6 +151,22 @@ class EspressoManager(
 
     private val _items = MutableStateFlow<List<CatalogItemDto>>(emptyList())
     val items: StateFlow<List<CatalogItemDto>> = _items.asStateFlow()
+
+    private val _backofficeItems = MutableStateFlow<List<CatalogItemDto>>(emptyList())
+    val backofficeItems: StateFlow<List<CatalogItemDto>> = _backofficeItems.asStateFlow()
+
+    private fun replaceCatalogItems(items: List<CatalogItemDto>) {
+        _backofficeItems.value = items
+        _items.value = items.filter { it.status == "active" || it.status == "draft" }
+    }
+
+    private fun saveCatalogItem(item: CatalogItemDto) {
+        val current = _backofficeItems.value
+        replaceCatalogItems(
+            if (current.any { it.id == item.id }) current.map { if (it.id == item.id) item else it }
+            else current + item
+        )
+    }
 
     private val _cart = MutableStateFlow<List<EspressoCartLine>>(emptyList())
     val cart: StateFlow<List<EspressoCartLine>> = _cart.asStateFlow()
@@ -306,7 +323,9 @@ class EspressoManager(
 
             val itemRes = api.listItems(tenantId)
             if (itemRes.isSuccessful && itemRes.body() != null) {
-                _items.value = itemRes.body()!!.data.filter { it.status == "active" || it.status == "draft" }
+                replaceCatalogItems(itemRes.body()!!.data)
+            } else {
+                _statusMessage.value = "No se pudieron cargar los productos del catálogo."
             }
         } catch (e: Exception) {
             Log.e(tag, "Failed to load catalog", e)
@@ -447,7 +466,7 @@ class EspressoManager(
                     val res = api.createCatalogItem(tenantId, request)
                     val body = res.body()
                     if (res.isSuccessful && body != null) {
-                        _items.value = _items.value + body
+                        saveCatalogItem(body)
                         createdCount++
                     } else {
                         failed.add(index to "Error del servidor (HTTP ${res.code()})")
@@ -533,9 +552,7 @@ class EspressoManager(
                     )
                     val updated = res.body()
                     if (res.isSuccessful && updated != null) {
-                        _items.value = _items.value.map {
-                            if (it.id == updated.id) updated else it
-                        }
+                        saveCatalogItem(updated)
                         publishedItems++
                     } else {
                         errors.add("Producto ${item.name}: error HTTP ${res.code()}")
@@ -755,6 +772,10 @@ class EspressoManager(
     suspend fun createCategory(name: String): CatalogCategoryDto? {
         val cleanName = name.trim()
         if (cleanName.isBlank()) return null
+        if (_categories.value.any { it.name.equals(cleanName, ignoreCase = true) && it.status != "archived" }) {
+            _statusMessage.value = "Ya existe una categoría con ese nombre."
+            return null
+        }
         _isLoading.value = true
         touchStaffActivity()
         try {
@@ -762,6 +783,7 @@ class EspressoManager(
             if (res.isSuccessful && res.body() != null) {
                 val created = res.body()!!
                 _categories.value = _categories.value + created
+                _statusMessage.value = "Categoría «${created.name}» guardada como borrador."
                 return created
             } else {
                 _statusMessage.value = "Error al crear la categoría."
@@ -773,6 +795,59 @@ class EspressoManager(
             _isLoading.value = false
         }
         return null
+    }
+
+    /** Returns a message for the editor on failure, or null after saving. */
+    suspend fun editCatalogItem(item: CatalogItemDto, name: String, price: String, categoryId: String): String? {
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return "Ingresá el nombre del producto."
+        val newPrice = if (price.trim() == item.price) null
+            else normalizePriceString(price) ?: return "Ingresá un precio válido."
+        val destination = _categories.value.find { it.id == categoryId }
+            ?: return "Seleccioná una categoría."
+        val moved = destination.id != item.categoryId
+        if (moved && destination.status == "archived") return "Elegí una categoría que no esté archivada."
+        if (item.status == "active" && destination.status != "active") {
+            return "Un producto activo requiere una categoría publicada."
+        }
+
+        _isLoading.value = true
+        touchStaffActivity()
+        try {
+            val res = api.updateCatalogItem(
+                tenantId = tenantId,
+                itemId = item.id,
+                ifMatch = item.version.toString(),
+                body = UpdateCatalogItemRequest(
+                    version = item.version,
+                    name = cleanName.takeIf { it != item.name },
+                    price = newPrice,
+                    categoryId = destination.id.takeIf { moved }
+                )
+            )
+            val updated = res.body()
+            if (res.isSuccessful && updated != null) {
+                saveCatalogItem(updated)
+                _statusMessage.value = if (moved) "«${updated.name}» se movió a «${destination.name}»."
+                    else "Cambios guardados en «${updated.name}»."
+                return null
+            }
+            return when (res.code()) {
+                403 -> "No tenés permiso para modificar productos."
+                409, 412 -> {
+                    loadCatalog()
+                    "No se pudieron guardar los cambios. Si el producto cambió en otra pantalla, cerrá y volvé a abrir el editor."
+                }
+                else -> extractProblemDetail(res) ?: "No se pudo guardar el producto (HTTP ${res.code()})."
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to update catalog item", e)
+            return "Error de conexión al guardar el producto. Volvé a intentarlo."
+        } finally {
+            _isLoading.value = false
+        }
     }
 
     fun normalizePriceString(price: String): String? = Companion.normalizePriceString(price)
@@ -868,7 +943,7 @@ class EspressoManager(
             val res = api.createCatalogItem(tenantId, request)
             if (res.isSuccessful && res.body() != null) {
                 val created = res.body()!!
-                _items.value = _items.value + created
+                saveCatalogItem(created)
                 _pendingLookup.value = null
                 _statusMessage.value = "¡Producto \"${created.name}\" guardado como borrador! Publicalo desde Backoffice > Productos."
                 return true

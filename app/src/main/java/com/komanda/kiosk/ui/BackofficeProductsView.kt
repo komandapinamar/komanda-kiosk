@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.komanda.kiosk.core.network.CatalogItemDto
 import com.komanda.kiosk.ui.theme.Emerald600
 import com.komanda.kiosk.ui.theme.KomandaTokens
 import com.komanda.kiosk.ui.theme.Zinc300
@@ -82,7 +85,7 @@ fun BackofficeProductsView(
     isOwner: Boolean
 ) {
     val categories by espressoManager.categories.collectAsStateWithLifecycle()
-    val items by espressoManager.items.collectAsStateWithLifecycle()
+    val items by espressoManager.backofficeItems.collectAsStateWithLifecycle()
     val isLoading by espressoManager.isLoading.collectAsStateWithLifecycle()
     val statusMessage by espressoManager.statusMessage.collectAsStateWithLifecycle()
 
@@ -91,9 +94,12 @@ fun BackofficeProductsView(
     val scope = rememberCoroutineScope()
     val rows = remember { mutableStateListOf(EditableProductRow()) }
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
-    var newCategoryName by remember { mutableStateOf("") }
+    var showNewCategory by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<CatalogItemDto?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
     var scanningRowId by remember { mutableStateOf<String?>(null) }
+
+    val selectedCategory = categories.find { it.id == selectedCategoryId }
 
     if (!isOwner) {
         OwnerOnlyNotice(
@@ -134,7 +140,7 @@ fun BackofficeProductsView(
                             color = KomandaTokens.TextPrimary
                         )
                         Text(
-                            text = "La carga se guarda como borrador y se publica en un segundo paso. Solo Propietario.",
+                             text = "Explorá y editá el catálogo por categoría. Las altas se guardan como borrador.",
                             fontSize = 13.sp,
                             color = Zinc400
                         )
@@ -157,6 +163,51 @@ fun BackofficeProductsView(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                 )
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Zinc900),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Categorías", color = KomandaTokens.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                CategoryDropdown(
+                    categories = categories.map {
+                        it.id to if (it.status == "active") it.name else "${it.name} · ${catalogStatusLabel(it.status)}"
+                    },
+                    selectedId = selectedCategoryId,
+                    onSelect = { selectedCategoryId = it; formError = null },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = { showNewCategory = true }, enabled = !isLoading) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nueva categoría")
+                }
+                if (selectedCategory == null) {
+                    Text("Seleccioná una categoría para ver sus productos.", color = Zinc400)
+                } else {
+                    val categoryItems = items.filter { it.categoryId == selectedCategory.id }
+                    Text("${selectedCategory.name} · ${categoryItems.size} productos", color = KomandaTokens.TextPrimary)
+                    if (categoryItems.isEmpty()) Text("Esta categoría no tiene productos.", color = Zinc400)
+                    categoryItems.forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(item.name, color = KomandaTokens.TextPrimary, fontWeight = FontWeight.Medium)
+                                Text("$${item.price} · ${catalogStatusLabel(item.status)}", color = Zinc400, fontSize = 14.sp)
+                            }
+                            TextButton(onClick = { editingItem = item }, enabled = !isLoading) {
+                                Text("Editar", color = KomandaTokens.AccentTertiary)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -259,50 +310,6 @@ fun BackofficeProductsView(
             }
         }
 
-        // Category selector
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, KomandaTokens.Border, RoundedCornerShape(24.dp)),
-            colors = CardDefaults.cardColors(containerColor = Zinc900),
-            shape = RoundedCornerShape(24.dp)
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Categoría destino", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = KomandaTokens.TextPrimary)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CategoryDropdown(
-                        categories = categories.map { it.id to it.name },
-                        selectedId = selectedCategoryId,
-                        onSelect = {
-                            selectedCategoryId = it
-                            newCategoryName = ""
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = newCategoryName,
-                        onValueChange = {
-                            newCategoryName = it
-                            if (it.isNotBlank()) selectedCategoryId = null
-                        },
-                        label = { Text("...o nueva categoría") },
-                        singleLine = true,
-                        colors = darkFieldColors(),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Text(
-                    text = "Los productos se cargan en la categoría seleccionada. Si escribís una nueva, se crea automáticamente.",
-                    fontSize = 12.sp,
-                    color = Zinc400
-                )
-            }
-        }
-
         // Bulk rows
         Card(
             modifier = Modifier
@@ -319,7 +326,11 @@ fun BackofficeProductsView(
                 ) {
                     Column {
                         Text("Productos a cargar (${rows.size})", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = KomandaTokens.TextPrimary)
-                        Text("Completá una fila por producto. Se guardan como borrador hasta publicarlos.", fontSize = 12.sp, color = Zinc400)
+                         Text(
+                             selectedCategory?.let { "Destino: ${it.name}. Se guardan como borrador." }
+                                 ?: "Elegí arriba la categoría donde querés cargar los productos.",
+                             fontSize = 12.sp, color = Zinc400
+                         )
                     }
                     Button(
                         onClick = { rows.add(EditableProductRow()) },
@@ -364,27 +375,7 @@ fun BackofficeProductsView(
                         onClick = {
                             formError = null
                             scope.launch {
-                                var categoryId = selectedCategoryId
-                                if (!newCategoryName.isNullOrBlank()) {
-                                    val trimmed = newCategoryName.trim()
-                                    val existing = espressoManager.categories.value.find { it.name.equals(trimmed, ignoreCase = true) }
-                                    if (existing != null) {
-                                        categoryId = existing.id
-                                    } else {
-                                        val created = espressoManager.createCategory(trimmed)
-                                        if (created != null) {
-                                            categoryId = created.id
-                                            newCategoryName = ""
-                                        } else {
-                                            formError = espressoManager.statusMessage.value ?: "No se pudo crear la categoría."
-                                            return@launch
-                                        }
-                                    }
-                                }
-                                if (categoryId.isNullOrBlank()) {
-                                    formError = "Seleccioná una categoría o ingresá una nueva."
-                                    return@launch
-                                }
+                                 val categoryId = selectedCategory?.id ?: return@launch
 
                                 val bulkRows = rows.map { editable ->
                                     BulkProductRow(
@@ -408,7 +399,7 @@ fun BackofficeProductsView(
                                 }
                             }
                         },
-                        enabled = !isLoading,
+                         enabled = !isLoading && selectedCategory != null && selectedCategory.status != "archived",
                         colors = ButtonDefaults.buttonColors(
                             containerColor = KomandaTokens.AccentTertiary,
                             contentColor = KomandaTokens.AccentPrimary
@@ -424,6 +415,66 @@ fun BackofficeProductsView(
                     }
                 }
             }
+        }
+    }
+
+    if (showNewCategory) {
+        var name by remember { mutableStateOf("") }
+        CatalogEditDialog(
+            title = "Nueva categoría",
+            confirmLabel = "Crear borrador",
+            canSave = name.isNotBlank(),
+            onClose = { showNewCategory = false },
+            onSave = {
+                val created = espressoManager.createCategory(name)
+                if (created == null) espressoManager.statusMessage.value ?: "No se pudo crear la categoría."
+                else {
+                    selectedCategoryId = created.id
+                    formError = null
+                    null
+                }
+            }
+        ) { saving ->
+            Text("La categoría quedará como borrador hasta que la publiques.", color = Zinc400)
+            OutlinedTextField(
+                value = name, onValueChange = { name = it }, label = { Text("Nombre de la categoría") },
+                singleLine = true, enabled = !saving, colors = darkFieldColors(), modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+
+    editingItem?.let { item ->
+        var name by remember(item.id) { mutableStateOf(item.name) }
+        var price by remember(item.id) { mutableStateOf(item.price) }
+        var categoryId by remember(item.id) { mutableStateOf(item.categoryId) }
+        val destinations = categories.filter {
+            it.id == item.categoryId || (it.status != "archived" && (item.status != "active" || it.status == "active"))
+        }
+        CatalogEditDialog(
+            title = "Editar producto",
+            confirmLabel = "Guardar cambios",
+            canSave = name.isNotBlank() && price.isNotBlank() && categoryId != null &&
+                (name.trim() != item.name || price.trim() != item.price || categoryId != item.categoryId),
+            onClose = { editingItem = null },
+            onSave = { espressoManager.editCatalogItem(item, name, price, categoryId.orEmpty()) }
+        ) { saving ->
+            OutlinedTextField(
+                value = name, onValueChange = { name = it }, label = { Text("Nombre del producto") },
+                singleLine = true, enabled = !saving, colors = darkFieldColors(), modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = price, onValueChange = { price = it }, label = { Text(if (item.itemType == "weighted") "Precio ref. / kg" else "Precio") },
+                singleLine = true, enabled = !saving, colors = darkFieldColors(), modifier = Modifier.fillMaxWidth()
+            )
+            CategoryDropdown(
+                categories = destinations.map { it.id to if (it.status == "active") it.name else "${it.name} · ${catalogStatusLabel(it.status)}" },
+                selectedId = categoryId,
+                onSelect = { categoryId = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = "Mover a categoría",
+                enabled = !saving
+            )
+            if (item.status == "active") Text("Los productos activos solo se pueden mover a categorías publicadas.", color = Zinc400, fontSize = 14.sp)
         }
     }
 
@@ -450,6 +501,61 @@ fun BackofficeProductsView(
             }
         )
     }
+}
+
+private fun catalogStatusLabel(status: String): String = when (status) {
+    "active" -> "Publicado"
+    "draft" -> "Borrador"
+    "unavailable" -> "Pausado"
+    "archived" -> "Archivado"
+    else -> status
+}
+
+@Composable
+private fun CatalogEditDialog(
+    title: String,
+    confirmLabel: String,
+    canSave: Boolean,
+    onClose: () -> Unit,
+    onSave: suspend () -> String?,
+    content: @Composable (Boolean) -> Unit
+) {
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!saving) onClose() },
+        containerColor = Zinc900,
+        titleContentColor = KomandaTokens.TextPrimary,
+        title = { Text(title) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                content(saving)
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !saving && canSave,
+                onClick = {
+                    saving = true
+                    error = null
+                    scope.launch {
+                        try {
+                            error = onSave()
+                            if (error == null) onClose()
+                        } finally {
+                            saving = false
+                        }
+                    }
+                }
+            ) { Text(if (saving) "Guardando…" else confirmLabel) }
+        },
+        dismissButton = { TextButton(onClick = onClose, enabled = !saving) { Text("Cancelar") } }
+    )
 }
 
 @Composable
@@ -577,21 +683,24 @@ private fun CategoryDropdown(
     categories: List<Pair<String, String>>,
     selectedId: String?,
     onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    label: String = "Categoría",
+    enabled: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedName = categories.find { it.first == selectedId }?.second ?: "Seleccionar categoría"
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { if (enabled) expanded = it },
         modifier = modifier
     ) {
         OutlinedTextField(
             value = selectedName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Categoría existente") },
+            label = { Text(label) },
+            enabled = enabled,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             colors = darkFieldColors(),
             modifier = Modifier
